@@ -220,10 +220,13 @@ public:
         size_t bytes;
         BinaryInputBuffer::read(make_data(&bytes, sizeof(bytes)).data, sizeof(bytes));
 
+        const size_t remaining = get_stream_size() - get_offset();
+        OPENVINO_ASSERT(bytes <= remaining, "[GPU] Encrypted blob size field exceeds stream length");
+
         // Not reading directly to plaintext_stream because decrypt(plaintext_stream.str()) would create an additional
         // copy.
         std::string str(bytes, 0);
-        BinaryInputBuffer::read(make_data(const_cast<void*>(reinterpret_cast<const void*>(str.c_str())), str.size()).data, str.size());
+        BinaryInputBuffer::read(make_data(static_cast<void*>(str.data()), str.size()).data, str.size());
         plaintext_stream.str(decrypt(str));
     }
 
