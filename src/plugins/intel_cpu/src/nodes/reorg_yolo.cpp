@@ -50,6 +50,7 @@ ReorgYolo::ReorgYolo(const std::shared_ptr<ov::Node>& op, const GraphContext::CP
     const auto strides = reorgYolo->get_strides();
     CPU_NODE_ASSERT(!strides.empty(), "has empty strides");
     stride = strides[0];
+    CPU_NODE_ASSERT(stride > 0 && stride <= 65535, "ReorgYolo: stride out of safe range");
 }
 
 void ReorgYolo::initSupportedPrimitiveDescriptors() {
@@ -76,7 +77,7 @@ void ReorgYolo::execute([[maybe_unused]] const dnnl::stream& strm) {
     int IC = (inDims.size() > 1) ? inDims[1] : 1;
     int B = (!inDims.empty()) ? inDims[0] : 1;
 
-    int ic_off = IC / (stride * stride);
+    int64_t ic_off = IC / (static_cast<int64_t>(stride) * stride);
     int ih_off = IH * stride;
     int iw_off = IW * stride;
     for (int b = 0; b < B; b++) {
