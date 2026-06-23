@@ -204,8 +204,36 @@ ov::OutputVector conv_transpose(const ov::frontend::onnx::Node& node) {
         const ov::Shape data_static_shape = data_pshape.to_shape();
         const ov::Shape filters_static_shape = filters_pshape.to_shape();
 
+        // Reasonable upper bound for stride/dilation to prevent signed-integer
+        // overflow in the padding calculation below.
+        constexpr int64_t max_spatial_param = 65536;
+
         // Recalculate padding for each spatial dimension to achieve output_shape
         for (size_t i = 0; i < num_spatial_dims; ++i) {
+            // Validate attribute-derived values against safe ranges before performing
+            // the (potentially overflowing) arithmetic in signed int64_t.
+            CHECK_VALID_NODE(node,
+                             strides[i] >= 1 && strides[i] <= static_cast<size_t>(max_spatial_param),
+                             "ConvTranspose 'strides' value is out of the supported range [1, ",
+                             max_spatial_param,
+                             "]: ",
+                             strides[i]);
+            CHECK_VALID_NODE(node,
+                             dilations[i] >= 1 && dilations[i] <= static_cast<size_t>(max_spatial_param),
+                             "ConvTranspose 'dilations' value is out of the supported range [1, ",
+                             max_spatial_param,
+                             "]: ",
+                             dilations[i]);
+            CHECK_VALID_NODE(node,
+                             output_shape[i] > 0,
+                             "ConvTranspose 'output_shape' value must be positive, but got: ",
+                             output_shape[i]);
+            CHECK_VALID_NODE(node,
+                             output_padding[i] >= 0 &&
+                                 output_padding[i] < static_cast<int64_t>(strides[i]),
+                             "ConvTranspose 'output_padding' value must be in range [0, strides): ",
+                             output_padding[i]);
+
             const int64_t in_size = data_static_shape[2 + i];
             const int64_t kernel_size = filters_static_shape[2 + i];
             const int64_t stride = strides[i];
