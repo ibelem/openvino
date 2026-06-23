@@ -114,6 +114,10 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
 }
 
 Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
+    // SECURITY: This function dereferences m_offset as a raw host pointer and therefore
+    // must ONLY be called from the trusted in-memory OpenVINO EP plugin path (i.e. when a
+    // valid in-memory tensor place exists and the location equals ORT_MEM_ADDR). It must
+    // never be reachable from an on-disk ONNX file, which can set arbitrary offset values.
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
@@ -121,6 +125,13 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     bool is_valid_buffer = m_offset && m_data_length;
     bool is_empty_buffer = (m_data_length == 0);
     if (!(is_valid_buffer || is_empty_buffer)) {
+        throw error::invalid_external_data{*this};
+    }
+    // Reject implausible offsets that fall below the minimum user-space address threshold.
+    // Such values cannot originate from a legitimate in-memory initializer and likely come
+    // from an attacker-controlled on-disk ONNX file.
+    constexpr uint64_t min_user_space_address = 0x10000;  // 64KB
+    if (m_data_length > 0 && m_offset < min_user_space_address) {
         throw error::invalid_external_data{*this};
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
