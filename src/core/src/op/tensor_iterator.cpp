@@ -85,6 +85,10 @@ void op::v0::TensorIterator::validate_and_infer_types() {
             auto axis = slice_input_description->m_axis;
             if (input_partial_shape.rank().is_static()) {
                 auto part_size = slice_input_description->m_part_size;
+                NODE_VALIDATION_CHECK(this,
+                                      part_size > 0,
+                                      "SliceInputDescription m_part_size must be greater than zero, got: ",
+                                      part_size);
                 // infer type for m_body_parameter
                 ov::PartialShape out_shape{input_partial_shape};
                 out_shape[axis] = part_size;
@@ -133,6 +137,10 @@ void op::v0::TensorIterator::validate_and_infer_types() {
             set_output_type(index, body_value.get_element_type(), ov::PartialShape::dynamic());
             if (body_value_partial_rank.is_static()) {
                 auto part_size = concat_output_description->m_part_size;
+                NODE_VALIDATION_CHECK(this,
+                                      part_size > 0,
+                                      "ConcatOutputDescription m_part_size must be greater than zero, got: ",
+                                      part_size);
                 auto axis = concat_output_description->m_axis;
 
                 if (body_value_partial_rank == 0) {  // after scalars concatenation we must have 1D output
