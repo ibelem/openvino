@@ -274,6 +274,9 @@ int32_t GatherND::GatherNDExecutor::HandleNegativeIndices(const int32_t* indices
     if (index < 0) {
         index += srcDims[idx + batchDims];
     }
+    if (index < 0 || static_cast<size_t>(index) >= srcDims[idx + batchDims]) {
+        OPENVINO_THROW("GatherND: index out of bounds");
+    }
     return index;
 }
 
