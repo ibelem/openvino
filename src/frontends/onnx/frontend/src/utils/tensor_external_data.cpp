@@ -12,10 +12,82 @@
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/log.hpp"
 
+#include <cstdint>
+#ifdef _WIN32
+#    include <windows.h>
+#else
+#    include <cstdio>
+#endif
+
 namespace ov {
 namespace frontend {
 namespace onnx {
 namespace detail {
+namespace {
+// Validate that [ptr, ptr + size) refers to a currently mapped, readable region of this
+// process's address space. Used to guard the ORT shared-memory interop path against an
+// attacker-controlled offset that is reinterpreted as a raw pointer.
+bool is_readable_memory_region(const void* ptr, size_t size) {
+    if (size == 0) {
+        return true;
+    }
+    if (ptr == nullptr) {
+        return false;
+    }
+#if defined(_WIN32)
+    const char* p = static_cast<const char*>(ptr);
+    const uintptr_t start_addr = reinterpret_cast<uintptr_t>(p);
+    const uintptr_t end_addr = start_addr + size;
+    uintptr_t cur = start_addr;
+    while (cur < end_addr) {
+        MEMORY_BASIC_INFORMATION mbi;
+        if (VirtualQuery(reinterpret_cast<const void*>(cur), &mbi, sizeof(mbi)) == 0) {
+            return false;
+        }
+        if (mbi.State != MEM_COMMIT) {
+            return false;
+        }
+        const DWORD readable = PAGE_READONLY | PAGE_READWRITE | PAGE_EXECUTE_READ | PAGE_EXECUTE_READWRITE |
+                               PAGE_WRITECOPY | PAGE_EXECUTE_WRITECOPY;
+        if ((mbi.Protect & readable) == 0) {
+            return false;
+        }
+        if (mbi.Protect & (PAGE_GUARD | PAGE_NOACCESS)) {
+            return false;
+        }
+        const uintptr_t region_end = reinterpret_cast<uintptr_t>(mbi.BaseAddress) + mbi.RegionSize;
+        if (region_end <= cur) {
+            return false;
+        }
+        cur = region_end;
+    }
+    return true;
+#elif defined(__linux__)
+    std::ifstream maps("/proc/self/maps");
+    if (!maps.is_open()) {
+        return false;
+    }
+    const uintptr_t start_addr = reinterpret_cast<uintptr_t>(ptr);
+    const uintptr_t end_addr = start_addr + size;
+    std::string line;
+    while (std::getline(maps, line)) {
+        unsigned long long region_start = 0;
+        unsigned long long region_end = 0;
+        char perms[5] = {0};
+        if (std::sscanf(line.c_str(), "%llx-%llx %4s", &region_start, &region_end, perms) >= 3) {
+            if (region_start <= start_addr && end_addr <= region_end) {
+                return perms[0] == 'r';
+            }
+        }
+    }
+    return false;
+#else
+    // Unknown platform: be conservative and reject raw-address interop.
+    return false;
+#endif
+}
+}  // namespace
+
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
@@ -124,6 +196,12 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
         throw error::invalid_external_data{*this};
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
+    // m_offset is reinterpreted as a raw in-process address. Before copying, verify that the
+    // requested range is actually mapped and readable so an attacker-controlled offset coming
+    // from an ONNX model cannot trigger an out-of-bounds read of arbitrary process memory.
+    if (m_data_length > 0 && !is_readable_memory_region(addr_ptr, m_data_length)) {
+        throw error::invalid_external_data{*this};
+    }
     auto aligned_memory = std::make_shared<ov::AlignedBuffer>(m_data_length);
     if (m_data_length > 0) {
         std::memcpy(aligned_memory->get_ptr<char>(), addr_ptr, m_data_length);
