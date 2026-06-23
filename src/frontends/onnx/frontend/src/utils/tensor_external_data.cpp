@@ -123,6 +123,9 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     if (!(is_valid_buffer || is_empty_buffer)) {
         throw error::invalid_external_data{*this};
     }
+    // m_offset is interpreted as a raw in-process address; require it to be at least
+    // pointer-aligned before dereferencing to reject crafted/misaligned offsets.
+    OPENVINO_ASSERT(m_offset % sizeof(void*) == 0, "ORT_MEM_ADDR offset must be aligned to sizeof(void*)");
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
     auto aligned_memory = std::make_shared<ov::AlignedBuffer>(m_data_length);
     if (m_data_length > 0) {
