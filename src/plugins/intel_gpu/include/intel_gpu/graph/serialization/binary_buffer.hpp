@@ -144,11 +144,17 @@ public:
     }
 
     void seek_current_ptr(std::streamsize size) {
+        OPENVINO_ASSERT(size >= 0, "[GPU] seek_current_ptr: negative size");
         // Get current stream position
         std::streampos current_pos = _stream.tellg();
+        // Determine stream end to bound-check the requested advance
+        _stream.seekg(0, std::ios::end);
+        std::streampos end_pos = _stream.tellg();
+        _stream.seekg(current_pos);
+        OPENVINO_ASSERT(static_cast<std::streamoff>(end_pos - current_pos) >= size, "[GPU] seek_current_ptr: size exceeds stream bounds");
         // Advance stream position
         _stream.seekg(current_pos + static_cast<std::streampos>(size));
-        _offset += size;
+        _offset += static_cast<size_t>(size);
     }
     bool is_offset_page_aligned() const {
         return (get_offset() % CACHE_PAGE_SIZE == 0);
