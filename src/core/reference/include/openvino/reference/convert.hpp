@@ -5,6 +5,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cmath>
 #include <cstddef>
 
 #include "openvino/core/type/bfloat16.hpp"
@@ -35,7 +36,20 @@ namespace reference {
 namespace detail {
 
 template <typename TI, typename TO>
-constexpr typename std::enable_if<!std::is_same<TO, char>::value, TO>::type convert(const TI v) {
+constexpr typename std::enable_if<!std::is_same<TO, char>::value &&
+                                      !(std::is_integral<TO>::value && std::is_floating_point<TI>::value),
+                                  TO>::type
+convert(const TI v) {
+    return static_cast<TO>(v);
+}
+
+template <typename TI, typename TO>
+typename std::enable_if<!std::is_same<TO, char>::value && std::is_integral<TO>::value &&
+                            std::is_floating_point<TI>::value,
+                        TO>::type
+convert(const TI v) {
+    if (!std::isfinite(static_cast<double>(v)))
+        return static_cast<TO>(0);
     return static_cast<TO>(v);
 }
 
