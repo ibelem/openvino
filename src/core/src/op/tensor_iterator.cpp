@@ -95,6 +95,8 @@ void op::v0::TensorIterator::validate_and_infer_types() {
                     auto end = make_positive(slice_input_description->m_end, dim_size);
 
                     // +1 because the left and right borders are included [start, end]
+                    NODE_VALIDATION_CHECK(this, part_size != 0,
+                        "SliceInputDescription m_part_size must not be zero");
                     m_num_iterations = (std::abs(end - start) + 1) / part_size;
                 }
             } else {
