@@ -50,6 +50,7 @@ ReorgYolo::ReorgYolo(const std::shared_ptr<ov::Node>& op, const GraphContext::CP
     const auto strides = reorgYolo->get_strides();
     CPU_NODE_ASSERT(!strides.empty(), "has empty strides");
     stride = strides[0];
+    CPU_NODE_ASSERT(stride > 0, "ReorgYolo: stride must be positive, got ", stride);
 }
 
 void ReorgYolo::initSupportedPrimitiveDescriptors() {
