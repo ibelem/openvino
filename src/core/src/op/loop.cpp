@@ -15,6 +15,24 @@
 namespace ov {
 namespace op {
 namespace v5 {
+namespace {
+// Guards against unbounded recursion when a Loop body itself contains Loop nodes.
+// Model::validate_nodes_and_infer_types() revalidates every body node, which can
+// re-enter Loop::validate_and_infer_types() for nested Loops. Without a depth cap a
+// deeply (or maliciously) nested graph could exhaust the call stack.
+static thread_local int g_loop_validate_depth = 0;
+constexpr int g_loop_validate_max_depth = 64;
+
+struct LoopValidateDepthGuard {
+    LoopValidateDepthGuard() {
+        ++g_loop_validate_depth;
+    }
+    ~LoopValidateDepthGuard() {
+        --g_loop_validate_depth;
+    }
+};
+}  // namespace
+
 Loop::Loop(const Output<Node>& trip_count, const Output<Node>& execution_condition) : SubGraphOp() {
     set_argument(0, trip_count);
     set_argument(1, execution_condition);
@@ -32,6 +50,11 @@ bool Loop::visit_attributes(AttributeVisitor& visitor) {
 
 void Loop::validate_and_infer_types() {
     OV_OP_SCOPE(v5_Loop_validate_and_infer_types);
+
+    LoopValidateDepthGuard loop_validate_depth_guard;
+    NODE_VALIDATION_CHECK(this,
+                          g_loop_validate_depth <= g_loop_validate_max_depth,
+                          "Loop validation recursion depth exceeded the maximum allowed nesting level");
 
     NODE_VALIDATION_CHECK(this, m_bodies.size() == 1, "Number of bodies for loop is greater than 1");
 
