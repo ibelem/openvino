@@ -176,6 +176,8 @@ void op::v0::TensorIterator::try_to_set_num_iterations_if_no_slice_inputs() {
 
     for (const auto& output_description : m_output_descriptions[0]) {
         if (auto concat = ov::as_type_ptr<ConcatOutputDescription>(output_description)) {
+            OPENVINO_ASSERT(concat->m_part_size != 0,
+                "ConcatOutputDescription m_part_size must not be zero");
             m_num_iterations = ((std::abs(concat->m_end - concat->m_start)) / concat->m_part_size);
             break;
         }
