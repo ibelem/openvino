@@ -78,6 +78,22 @@ bool ov::op::v8::If::visit_attributes(AttributeVisitor& visitor) {
 void ov::op::v8::If::validate_and_infer_types() {
     OV_OP_SCOPE(v8_If_validate_and_infer_types);
 
+    // Guard against unbounded recursive subgraph validation (e.g. an If/Loop body that
+    // contains another If/Loop), which can otherwise re-enter this chain without any limit.
+    static thread_local int s_validation_depth = 0;
+    struct ValidationDepthGuard {
+        int& depth;
+        explicit ValidationDepthGuard(int& d) : depth(d) {
+            ++depth;
+        }
+        ~ValidationDepthGuard() {
+            --depth;
+        }
+    } validation_depth_guard(s_validation_depth);
+    NODE_VALIDATION_CHECK(this,
+                          s_validation_depth <= 512,
+                          "If subgraph nesting depth exceeded the maximum allowed limit");
+
     NODE_VALIDATION_CHECK(this, m_bodies.size() == 2, "If contains incorrect number of bodies:", m_bodies.size());
 
     NODE_VALIDATION_CHECK(this,
