@@ -126,6 +126,10 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
     auto aligned_memory = std::make_shared<ov::AlignedBuffer>(m_data_length);
     if (m_data_length > 0) {
+        // Defense-in-depth: reject null-page and low-address dereferences.
+        if (m_offset < 65536) {
+            throw error::invalid_external_data{*this};
+        }
         std::memcpy(aligned_memory->get_ptr<char>(), addr_ptr, m_data_length);
     }
     return std::make_shared<ov::SharedBuffer<std::shared_ptr<ov::AlignedBuffer>>>(aligned_memory->get_ptr<char>(),
