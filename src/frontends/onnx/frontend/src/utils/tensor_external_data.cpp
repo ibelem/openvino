@@ -17,6 +17,9 @@ namespace frontend {
 namespace onnx {
 namespace detail {
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
+    // This constructor is fed from untrusted ONNX protobuf input loaded from disk or a byte
+    // buffer. Such tensors must never be allowed to use the in-process ORT memory-address path.
+    m_from_ort_session = false;
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
@@ -38,6 +41,9 @@ TensorExternalData::TensorExternalData(const std::string& location, size_t offse
     m_data_location = location;
     m_offset = offset;
     m_data_length = size;
+    // This constructor is used by the in-process ORT session path which supplies a valid
+    // in-process data pointer, so the ORT memory-address branch is permitted here.
+    m_from_ort_session = true;
 }
 
 Buffer<ov::MappedMemory> TensorExternalData::load_external_mmap_data(const std::filesystem::path& model_dir,
@@ -114,6 +120,12 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
 }
 
 Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
+    // Defense-in-depth: the ORT in-memory address branch dereferences m_offset as a raw pointer.
+    // It must only ever be reached for tensors that originated from an in-process ORT session.
+    // Untrusted file/buffer input (TensorProto constructor) must never be allowed here.
+    if (!m_from_ort_session) {
+        throw error::invalid_external_data{*this};
+    }
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
