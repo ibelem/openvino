@@ -54,6 +54,15 @@ public:
     /// \return     External binary data loaded into the SharedBuffer
     Buffer<ov::AlignedBuffer> load_external_mem_data() const;
 
+    /// \brief      Indicates whether this tensor was placed in shared memory by an in-process ORT hand-off.
+    ///             Only set by the internal ORT tensor-place constructor path, never by the TensorProto
+    ///             constructor path. Used to gate load_external_mem_data().
+    ///
+    /// \return     True if the tensor originates from an ORT in-process shared-memory hand-off
+    bool is_ort_shared_memory() const {
+        return m_is_ort_shared_memory;
+    }
+
     /// \brief      Represets parameter of external data as string
     ///
     /// \return     State of TensorExternalData as string representation
@@ -80,6 +89,7 @@ private:
     uint64_t m_offset = 0;
     uint64_t m_data_length = 0;
     std::string m_sha1_digest{};
+    bool m_is_ort_shared_memory = false;
 };
 
 /*
