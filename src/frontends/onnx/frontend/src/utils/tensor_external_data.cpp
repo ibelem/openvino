@@ -38,6 +38,7 @@ TensorExternalData::TensorExternalData(const std::string& location, size_t offse
     m_data_location = location;
     m_offset = offset;
     m_data_length = size;
+    m_from_ort_session = true;
 }
 
 Buffer<ov::MappedMemory> TensorExternalData::load_external_mmap_data(const std::filesystem::path& model_dir,
@@ -114,6 +115,8 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
 }
 
 Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
+    OPENVINO_ASSERT(m_from_ort_session,
+                    "In-process memory external data is only allowed from a trusted ORT session source");
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
