@@ -140,7 +140,12 @@ size_t Range::getWorkAmount(data_t* startPtr, data_t* stopPtr, data_t* stepPtr) 
     if (std::is_same_v<data_t, int>) {
         auto iSpan = static_cast<int>(span);
         auto iStep = static_cast<int>(step);
-        return static_cast<size_t>(div_up(iSpan < 0 ? -iSpan : iSpan, iStep < 0 ? -iStep : iStep));
+        int64_t s64 = iSpan;
+        int64_t st64 = iStep;
+        if (st64 == 0) {
+            return 0;
+        }
+        return static_cast<size_t>(div_up(s64 < 0 ? -s64 : s64, st64 < 0 ? -st64 : st64));
     }
     return static_cast<size_t>(std::ceil(std::fabs(span) / std::fabs(step)));
 }
