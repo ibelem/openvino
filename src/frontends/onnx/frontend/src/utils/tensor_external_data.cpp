@@ -16,6 +16,12 @@ namespace ov {
 namespace frontend {
 namespace onnx {
 namespace detail {
+namespace {
+// Upper bound on a single tensor's external-data size, used to reject
+// absurd length values parsed from untrusted protobuf metadata before
+// any allocation is attempted.
+constexpr uint64_t MAX_ALLOWED_TENSOR_BYTES = static_cast<uint64_t>(16) * 1024 * 1024 * 1024;  // 16 GB
+}  // namespace
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
@@ -49,6 +55,10 @@ Buffer<ov::MappedMemory> TensorExternalData::load_external_mmap_data(const std::
         throw error::invalid_external_data{e.what()};
     }
 
+    if (m_data_length > MAX_ALLOWED_TENSOR_BYTES) {
+        throw error::invalid_external_data{*this};
+    }
+
     const int64_t file_size = ov::util::file_size(full_path);
     if (file_size <= 0 || m_data_length > static_cast<uint64_t>(file_size) ||
         m_offset > static_cast<uint64_t>(file_size) - m_data_length) {
@@ -77,6 +87,10 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
         full_path = ov::util::sanitize_path(model_dir, ov::util::make_path(m_data_location));
     } catch (const std::runtime_error& e) {
         throw error::invalid_external_data{e.what()};
+    }
+
+    if (m_data_length > MAX_ALLOWED_TENSOR_BYTES) {
+        throw error::invalid_external_data{*this};
     }
 
     const auto file_size = util::file_size(full_path);
@@ -121,6 +135,9 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     bool is_valid_buffer = m_offset && m_data_length;
     bool is_empty_buffer = (m_data_length == 0);
     if (!(is_valid_buffer || is_empty_buffer)) {
+        throw error::invalid_external_data{*this};
+    }
+    if (m_data_length > MAX_ALLOWED_TENSOR_BYTES) {
         throw error::invalid_external_data{*this};
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
