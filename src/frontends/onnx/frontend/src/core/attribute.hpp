@@ -117,8 +117,16 @@ inline std::vector<std::size_t> get_value(const AttributeProto& attribute) {
     switch (attribute.type()) {
     case AttributeProto_AttributeType::AttributeProto_AttributeType_INT:
         return {static_cast<std::size_t>(attribute.i())};
-    case AttributeProto_AttributeType::AttributeProto_AttributeType_INTS:
-        return {std::begin(attribute.ints()), std::end(attribute.ints())};
+    case AttributeProto_AttributeType::AttributeProto_AttributeType_INTS: {
+        std::vector<std::size_t> result;
+        result.reserve(attribute.ints_size());
+        for (int64_t v : attribute.ints()) {
+            if (v < 0)
+                OPENVINO_THROW("Attribute element must be non-negative, got: ", v);
+            result.push_back(static_cast<std::size_t>(v));
+        }
+        return result;
+    }
     default:
         ONNX_INVALID_ATTR(attribute.type(), "INT, INTS");
     }
