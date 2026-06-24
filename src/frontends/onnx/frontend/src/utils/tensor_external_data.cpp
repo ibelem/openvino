@@ -17,6 +17,7 @@ namespace frontend {
 namespace onnx {
 namespace detail {
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
+    m_from_file = true;
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
@@ -114,6 +115,9 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
 }
 
 Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
+    if (m_from_file) {
+        throw error::invalid_external_data{*this};
+    }
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
