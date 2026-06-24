@@ -109,6 +109,7 @@ inline std::size_t get_value(const AttributeProto& attribute) {
     if (attribute.type() != AttributeProto_AttributeType::AttributeProto_AttributeType_INT) {
         ONNX_INVALID_ATTR(attribute.type(), "INT");
     }
+    OPENVINO_ASSERT(attribute.i() >= 0, "Attribute INT value must be non-negative, got: ", attribute.i());
     return static_cast<std::size_t>(attribute.i());
 }
 
@@ -116,9 +117,17 @@ template <>
 inline std::vector<std::size_t> get_value(const AttributeProto& attribute) {
     switch (attribute.type()) {
     case AttributeProto_AttributeType::AttributeProto_AttributeType_INT:
+        OPENVINO_ASSERT(attribute.i() >= 0, "Attribute INT value must be non-negative, got: ", attribute.i());
         return {static_cast<std::size_t>(attribute.i())};
-    case AttributeProto_AttributeType::AttributeProto_AttributeType_INTS:
-        return {std::begin(attribute.ints()), std::end(attribute.ints())};
+    case AttributeProto_AttributeType::AttributeProto_AttributeType_INTS: {
+        std::vector<std::size_t> result;
+        result.reserve(attribute.ints_size());
+        for (const auto v : attribute.ints()) {
+            OPENVINO_ASSERT(v >= 0, "Attribute INTS element must be non-negative, got: ", v);
+            result.push_back(static_cast<std::size_t>(v));
+        }
+        return result;
+    }
     default:
         ONNX_INVALID_ATTR(attribute.type(), "INT, INTS");
     }
