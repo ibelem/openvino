@@ -59,6 +59,10 @@ Reshape::Reshape(const std::shared_ptr<ov::Node>& op, const GraphContext::CPtr& 
             if (op->get_input_partial_shape(1).is_dynamic()) {
                 CPU_NODE_THROW("has non static second input");
             }
+            if (op->get_input_partial_shape(1).rank().is_static() &&
+                op->get_input_partial_shape(1).rank().get_length() == 0) {
+                CPU_NODE_THROW("has scalar (rank-0) second input");
+            }
         };
 
         if (ov::as_type_ptr<const ov::op::v1::Reshape>(op)) {
@@ -79,7 +83,11 @@ Reshape::Reshape(const std::shared_ptr<ov::Node>& op, const GraphContext::CPtr& 
 bool Reshape::needShapeInfer() const {
     const auto& mem = getParentEdgeAt(1)->getMemory();
     if (lastSecondInputValues.empty()) {
-        lastSecondInputValues.resize(mem.getStaticDims()[0], 0);
+        const auto& dims = mem.getStaticDims();
+        if (dims.empty()) {
+            CPU_NODE_THROW("second input must be at least 1-D");
+        }
+        lastSecondInputValues.resize(dims[0], 0);
     }
     const auto* sndInput = mem.getDataAs<const int32_t>();
     for (size_t i = 0; i < lastSecondInputValues.size(); i++) {
