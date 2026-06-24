@@ -4,6 +4,8 @@
 
 #include "openvino/runtime/single_file_storage.hpp"
 
+#include <limits>
+
 #include "openvino/runtime/aligned_buffer.hpp"
 #include "openvino/util/file_util.hpp"
 #include "openvino/util/mmap_object.hpp"
@@ -109,7 +111,11 @@ bool SingleFileStorage::build_content_index(std::ifstream& stream) {
         if (!s.good() || blob_data_pos < 0) {
             return false;
         }
-        const auto blob_data_size = static_cast<std::streamoff>(size - header_size - padding_size);
+        const uint64_t raw_data_size = size - header_size - padding_size;
+        if (raw_data_size > static_cast<uint64_t>(std::numeric_limits<std::streamoff>::max())) {
+            return false;
+        }
+        const auto blob_data_size = static_cast<std::streamoff>(raw_data_size);
         s.seekg(blob_data_size, std::ios::cur);
         if (!s.good()) {
             return false;
@@ -188,7 +194,11 @@ bool SingleFileStorage::build_content_index(std::ifstream& stream) {
         if (!s.good()) {
             return false;
         }
-        const auto weight_size = size - header_size - padding_size;
+        const uint64_t raw_weight_size = size - header_size - padding_size;
+        if (raw_weight_size > static_cast<uint64_t>(std::numeric_limits<std::streamoff>::max())) {
+            return false;
+        }
+        const auto weight_size = static_cast<std::streamoff>(raw_weight_size);
         m_shared_context->m_cache_sources[source_id] = {};
         s.seekg(weight_size, std::ios::cur);
         return s.good();
