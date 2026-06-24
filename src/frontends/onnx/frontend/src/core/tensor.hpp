@@ -191,7 +191,7 @@ public:
     Tensor(const TensorProto& tensor, const std::filesystem::path& model_dir, detail::MappedMemoryHandles mmap_cache)
         : m_tensor_proto{&tensor},
           m_tensor_place(nullptr),
-          m_shape{std::begin(tensor.dims()), std::end(tensor.dims())},
+          m_shape{(validate_dims(tensor), std::begin(tensor.dims())), std::end(tensor.dims())},
           m_model_dir{model_dir},
           m_mmap_cache{mmap_cache} {
         if (m_shape == ov::Shape{0} && get_data_size() == 1) {
@@ -305,6 +305,12 @@ public:
     std::shared_ptr<ov::op::v0::Constant> get_ov_constant() const;
 
 private:
+    static void validate_dims(const TensorProto& tensor) {
+        for (auto d : tensor.dims()) {
+            FRONT_END_GENERAL_CHECK(d >= 0, "Tensor dim must be non-negative, got ", d);
+        }
+    }
+
     bool has_external_data() const {
         if (m_tensor_place != nullptr) {
             return m_tensor_place->get_data_location() != nullptr;
