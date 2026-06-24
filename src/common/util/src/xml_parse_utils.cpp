@@ -203,6 +203,9 @@ int pugixml::get_int_attr(const pugi::xml_node& node, const char* str, int defVa
     auto attr = node.attribute(str);
     if (attr.empty())
         return defVal;
+    auto str_value = std::string(attr.value());
+    if (str_value.empty())
+        return defVal;
     return get_int_attr(node, str);
 }
 
@@ -210,12 +213,18 @@ int64_t pugixml::get_int64_attr(const pugi::xml_node& node, const char* str, int
     auto attr = node.attribute(str);
     if (attr.empty())
         return defVal;
+    auto str_value = std::string(attr.value());
+    if (str_value.empty())
+        return defVal;
     return get_int64_attr(node, str);
 }
 
 uint64_t pugixml::get_uint64_attr(const pugi::xml_node& node, const char* str, uint64_t defVal) {
     auto attr = node.attribute(str);
     if (attr.empty())
+        return defVal;
+    auto str_value = std::string(attr.value());
+    if (str_value.empty())
         return defVal;
     return get_uint64_attr(node, str);
 }
