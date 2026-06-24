@@ -117,6 +117,8 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
+    OPENVINO_ASSERT(m_from_ort_session,
+                    "ORT_MEM_ADDR tensors are only valid for in-process ORT sessions, not file-sourced models");
     // Empty node will create a constant with zero shape and zero size external data.
     bool is_valid_buffer = m_offset && m_data_length;
     bool is_empty_buffer = (m_data_length == 0);
