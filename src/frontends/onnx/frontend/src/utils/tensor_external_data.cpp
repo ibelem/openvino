@@ -28,6 +28,9 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
             m_sha1_digest = entry.value();
         }
     }
+    if (m_data_location == ORT_MEM_ADDR) {
+        throw error::invalid_external_data{"ORT_MEM_ADDR location is not permitted in file-loaded models"};
+    }
 #ifdef ENABLE_OPENVINO_DEBUG
     if (m_sha1_digest.size() > 0) {
         OPENVINO_WARN("SHA1 checksum is not supported");
