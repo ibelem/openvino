@@ -220,10 +220,20 @@ public:
         size_t bytes;
         BinaryInputBuffer::read(make_data(&bytes, sizeof(bytes)).data, sizeof(bytes));
 
+        // Validate the decoded size before using it as an allocation size. The value is
+        // read from an untrusted stream, so guard against both an absurd ceiling and a
+        // size that exceeds the bytes actually remaining in the stream.
+        constexpr size_t MAX_ENCRYPTED_BLOB_BYTES = 2ULL * 1024 * 1024 * 1024; // 2 GB
+        OPENVINO_ASSERT(bytes <= MAX_ENCRYPTED_BLOB_BYTES,
+            "[GPU] Encrypted blob size exceeds maximum: " + std::to_string(bytes));
+        const size_t remaining = get_stream_size() - get_offset();
+        OPENVINO_ASSERT(bytes <= remaining,
+            "[GPU] Encrypted blob size exceeds remaining stream bytes");
+
         // Not reading directly to plaintext_stream because decrypt(plaintext_stream.str()) would create an additional
         // copy.
         std::string str(bytes, 0);
-        BinaryInputBuffer::read(make_data(const_cast<void*>(reinterpret_cast<const void*>(str.c_str())), str.size()).data, str.size());
+        BinaryInputBuffer::read(make_data(str.data(), str.size()).data, str.size());
         plaintext_stream.str(decrypt(str));
     }
 
