@@ -1,3 +1,4 @@
+```
 // Copyright (C) 2018-2026 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -138,6 +139,9 @@ size_t Range::getWorkAmount(data_t* startPtr, data_t* stopPtr, data_t* stepPtr) 
     const data_t span = *stopPtr - *startPtr;
     const data_t step = *stepPtr;
     if (std::is_same_v<data_t, int>) {
+        if (step == 0) {
+            return 0;
+        }
         auto iSpan = static_cast<int>(span);
         auto iStep = static_cast<int>(step);
         return static_cast<size_t>(div_up(iSpan < 0 ? -iSpan : iSpan, iStep < 0 ? -iStep : iStep));
@@ -172,3 +176,4 @@ bool Range::created() const {
 }
 
 }  // namespace ov::intel_cpu::node
+```
