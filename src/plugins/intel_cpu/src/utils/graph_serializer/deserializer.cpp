@@ -150,6 +150,7 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
     auto* buffer_base = reinterpret_cast<char*>(model_buffer->get_ptr());
 
     const auto file_size = model_buffer->size();
+    OPENVINO_ASSERT(file_size >= sizeof(hdr), "[CPU] Cache blob too small to contain StreamSerialize header (" + std::to_string(file_size) + " < " + std::to_string(sizeof(hdr)) + ")");
     pass::StreamSerialize::DataHeader hdr = {};
     std::memcpy(reinterpret_cast<char*>(&hdr), buffer_base, sizeof hdr);
 
