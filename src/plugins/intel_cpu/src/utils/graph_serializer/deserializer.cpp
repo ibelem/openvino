@@ -209,28 +209,36 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
 
     const size_t hdr_pos = model_stream.tellg();
     model_stream.seekg(0, std::istream::end);
+    OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to seek to end of model stream.");
     const size_t file_size = model_stream.tellg();
     model_stream.seekg(hdr_pos, std::istream::beg);
+    OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to seek to header position in model stream.");
 
     pass::StreamSerialize::DataHeader hdr = {};
     model_stream.read(reinterpret_cast<char*>(&hdr), sizeof(hdr));
+    OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to read model header.");
+
+    const size_t avail_size = file_size - hdr_pos;
 
     // Check if model header contains valid data.
     bool is_valid_model = (hdr.custom_data_offset == sizeof(hdr)) &&
                           (hdr.custom_data_size == hdr.consts_offset - hdr.custom_data_offset) &&
-                          (hdr.consts_size == hdr.model_offset - hdr.consts_offset) && (file_size > hdr.model_offset);
+                          (hdr.consts_size == hdr.model_offset - hdr.consts_offset) && (avail_size > hdr.model_offset);
     OPENVINO_ASSERT(is_valid_model, "[CPU] Could not deserialize by device xml header.");
 
-    hdr.model_size = file_size - hdr.model_offset;
+    hdr.model_size = avail_size - hdr.model_offset;
 
     // read model input/output precisions
+    OPENVINO_ASSERT(hdr.custom_data_offset <= SIZE_MAX - hdr_pos, "[CPU] Invalid custom data offset in model header.");
     model_stream.seekg(hdr.custom_data_offset + hdr_pos);
+    OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to seek to custom data in model stream.");
 
     pugi::xml_document xmlInOutDoc;
     if (hdr.custom_data_size > 0) {
         std::string xmlInOutString;
         xmlInOutString.resize(hdr.custom_data_size);
         model_stream.read(const_cast<char*>(xmlInOutString.c_str()), hdr.custom_data_size);
+        OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to read custom data.");
         auto res = xmlInOutDoc.load_string(xmlInOutString.c_str());
         OPENVINO_ASSERT(res.status == pugi::status_ok,
                         "NetworkNotRead: The inputs and outputs information is invalid.");
@@ -238,16 +246,22 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
 
     // read blob content
     auto data_blob = std::make_shared<ov::Tensor>(ov::element::u8, ov::Shape({hdr.consts_size}));
+    OPENVINO_ASSERT(hdr.consts_offset <= SIZE_MAX - hdr_pos, "[CPU] Invalid consts offset in model header.");
     model_stream.seekg(hdr.consts_offset + hdr_pos);
+    OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to seek to consts in model stream.");
     if (hdr.consts_size) {
         model_stream.read(static_cast<char*>(data_blob->data(ov::element::u8)), hdr.consts_size);
+        OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to read consts data.");
     }
 
     // read XML content
     auto xml_string = std::make_shared<std::string>();
+    OPENVINO_ASSERT(hdr.model_offset <= SIZE_MAX - hdr_pos, "[CPU] Invalid model offset in model header.");
     model_stream.seekg(hdr.model_offset + hdr_pos);
+    OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to seek to XML content in model stream.");
     xml_string->resize(hdr.model_size);
     model_stream.read(const_cast<char*>(xml_string->data()), hdr.model_size);
+    OPENVINO_ASSERT(model_stream.good(), "[CPU] Failed to read XML content.");
     if (m_cache_decrypt) {
         if (m_decript_from_string) {
             *xml_string = m_cache_decrypt.m_decrypt_str(*xml_string);
