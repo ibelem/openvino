@@ -236,13 +236,14 @@ void CompiledModel::export_model(std::ostream& model) const {
 }
 
 std::shared_ptr<const ov::Model> CompiledModel::get_runtime_model() const {
+    OPENVINO_ASSERT(!m_graphs.empty(), "[GPU] Model not loaded");
     return get_graph(0)->get_runtime_model();
 }
 const std::vector<std::shared_ptr<Graph>>& CompiledModel::get_graphs() const {
     return m_graphs;
 }
 std::shared_ptr<Graph> CompiledModel::get_graph(size_t n) const {
-    OPENVINO_ASSERT(m_graphs.size() >= n, "[GPU] Invalid graph idx: ", n, ". Only ", m_graphs.size(), " were created");
+    OPENVINO_ASSERT(m_graphs.size() > n, "[GPU] Invalid graph idx: ", n, ". Only ", m_graphs.size(), " were created");
     return m_graphs[n];
 }
 
