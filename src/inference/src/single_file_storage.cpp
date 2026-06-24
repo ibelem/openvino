@@ -189,9 +189,12 @@ bool SingleFileStorage::build_content_index(std::ifstream& stream) {
             return false;
         }
         const auto weight_size = size - header_size - padding_size;
-        m_shared_context->m_cache_sources[source_id] = {};
         s.seekg(weight_size, std::ios::cur);
-        return s.good();
+        if (!s.good()) {
+            return false;
+        }
+        m_shared_context->m_cache_sources[source_id] = {};
+        return true;
     };
     const TLVValueScanner scanners = {
         {static_cast<TLVTraits::TagType>(Tag::Blob), blob_reader},
