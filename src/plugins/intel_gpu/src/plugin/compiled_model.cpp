@@ -157,7 +157,7 @@ CompiledModel::CompiledModel(cldnn::BinaryInputBuffer& ib,
     }
 
     auto graph_base = std::make_shared<Graph>(ib, context, m_config, 0);
-    for (uint16_t n = 0; n < m_config.get_num_streams(); n++) {
+    for (int32_t n = 0; n < m_config.get_num_streams(); n++) {
         auto graph = n == 0 ? graph_base : std::make_shared<Graph>(graph_base, n);
         m_graphs.push_back(graph);
     }
