@@ -4,6 +4,7 @@
 
 #include "range.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -140,7 +141,14 @@ size_t Range::getWorkAmount(data_t* startPtr, data_t* stopPtr, data_t* stepPtr) 
     if (std::is_same_v<data_t, int>) {
         auto iSpan = static_cast<int>(span);
         auto iStep = static_cast<int>(step);
+        if (iStep == 0) {
+            return 0;
+        }
         return static_cast<size_t>(div_up(iSpan < 0 ? -iSpan : iSpan, iStep < 0 ? -iStep : iStep));
+    }
+    if (!std::isnormal(step)) {
+        // step == 0, subnormal, inf, or NaN — produces no elements or is invalid
+        return 0;
     }
     return static_cast<size_t>(std::ceil(std::fabs(span) / std::fabs(step)));
 }
@@ -150,6 +158,10 @@ Range::StatusCode Range::rangeKernel() {
     data_t start = 0;
     data_t delta = 0;
     size_t work_amount_dst = getWorkAmount<data_t>(&start, nullptr, &delta);
+    constexpr size_t MAX_RANGE_ELEMENTS = 1ULL << 28;  // 256 M elements
+    if (work_amount_dst > MAX_RANGE_ELEMENTS) {
+        CPU_NODE_THROW("Range output size ", work_amount_dst, " exceeds limit");
+    }
     if (isDynamicNode()) {
         VectorDims newOutputShape{work_amount_dst};
         redefineOutputMemory({newOutputShape});
