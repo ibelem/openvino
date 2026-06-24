@@ -237,6 +237,12 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
     }
 
     // read blob content
+    // Guard against malicious/oversized headers that would force a huge allocation.
+    // Cap the constants size to a reasonable maximum and ensure it stays within the stream bounds.
+    constexpr size_t max_consts_size = static_cast<size_t>(2) * 1024 * 1024 * 1024;  // 2 GB
+    OPENVINO_ASSERT(hdr.consts_size <= max_consts_size && hdr.consts_offset <= file_size - hdr_pos &&
+                        hdr.consts_size <= (file_size - hdr_pos) - hdr.consts_offset,
+                    "[CPU] consts_size exceeds stream bounds");
     auto data_blob = std::make_shared<ov::Tensor>(ov::element::u8, ov::Shape({hdr.consts_size}));
     model_stream.seekg(hdr.consts_offset + hdr_pos);
     if (hdr.consts_size) {
