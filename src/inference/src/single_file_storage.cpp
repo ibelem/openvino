@@ -160,6 +160,9 @@ bool SingleFileStorage::build_content_index(std::ifstream& stream) {
             s.read(reinterpret_cast<char*>(&const_offset), sizeof(const_offset));
             s.read(reinterpret_cast<char*>(&const_size), sizeof(const_size));
             s.read(reinterpret_cast<char*>(&const_type), sizeof(const_type));
+            if (const_type >= static_cast<uint8_t>(element::enum_types_size)) {
+                return false;
+            }
             if (s.good()) {
                 m_shared_context->m_weight_registry[source_id][const_id] = {static_cast<size_t>(const_offset),
                                                                             static_cast<size_t>(const_size),
