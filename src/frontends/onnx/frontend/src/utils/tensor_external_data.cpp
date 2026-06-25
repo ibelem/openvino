@@ -4,8 +4,11 @@
 
 #include "utils/tensor_external_data.hpp"
 
+#include <cstdint>
 #include <fstream>
+#include <set>
 #include <sstream>
+#include <utility>
 
 #include "exceptions.hpp"
 #include "openvino/runtime/lazy_buffer.hpp"
@@ -113,7 +116,8 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
     return read_data_length >= lazy_loading_threshold ? get_lazy_buffer() : get_now_buffer();
 }
 
-Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
+Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data(
+    const std::set<std::pair<uintptr_t, size_t>>& allowed_regions) const {
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
@@ -122,6 +126,31 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     bool is_empty_buffer = (m_data_length == 0);
     if (!(is_valid_buffer || is_empty_buffer)) {
         throw error::invalid_external_data{*this};
+    }
+    // Validate that the requested range [m_offset, m_offset + m_data_length) falls
+    // entirely within a region explicitly whitelisted by the trusted caller. This
+    // prevents an attacker-controlled offset from being dereferenced as an arbitrary
+    // pointer.
+    if (m_data_length > 0) {
+        const uintptr_t req_begin = static_cast<uintptr_t>(m_offset);
+        const uintptr_t req_end = req_begin + static_cast<uintptr_t>(m_data_length);
+        bool within_allowed = false;
+        if (req_end >= req_begin) {  // guard against overflow
+            for (const auto& region : allowed_regions) {
+                const uintptr_t region_begin = region.first;
+                const uintptr_t region_end = region_begin + static_cast<uintptr_t>(region.second);
+                if (region_end < region_begin) {
+                    continue;  // skip overflowing region descriptors
+                }
+                if (req_begin >= region_begin && req_end <= region_end) {
+                    within_allowed = true;
+                    break;
+                }
+            }
+        }
+        if (!within_allowed) {
+            throw error::invalid_external_data{*this};
+        }
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
     auto aligned_memory = std::make_shared<ov::AlignedBuffer>(m_data_length);
