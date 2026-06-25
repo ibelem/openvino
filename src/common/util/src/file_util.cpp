@@ -101,6 +101,19 @@ void ov::util::recursive_iterate_files(const std::filesystem::path& path,
 
 std::filesystem::path ov::util::sanitize_path(const std::filesystem::path& base,
                                               const std::filesystem::path& relative_path) {
+    // NOTE: When `base` is empty (e.g. a model loaded from memory with no associated file
+    // path), the containment boundary falls back to the current working directory. This
+    // fallback only guarantees that the resolved path does not escape ABOVE the CWD; it
+    // does NOT guarantee that the path stays within the intended model directory. Callers
+    // that rely on the "external data must reside within the model directory" invariant
+    // must reject empty model directories before invoking sanitize_path.
+    if (relative_path.is_absolute()) {
+        std::stringstream ss;
+        ss << "Path '" << path_to_string(relative_path)
+           << "' is an absolute path and is not allowed as a relative external data path";
+        throw std::runtime_error(ss.str());
+    }
+
     const auto base_dir = base.empty() ? std::filesystem::current_path() : base;
     const auto base_canon = std::filesystem::weakly_canonical(base_dir);
     auto merged_canon = std::filesystem::weakly_canonical(base_dir / relative_path);
