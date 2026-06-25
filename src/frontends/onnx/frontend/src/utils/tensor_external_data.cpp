@@ -28,6 +28,13 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
             m_sha1_digest = entry.value();
         }
     }
+    // The ORT_MEM_ADDR path reinterprets m_offset as a raw pointer and is an
+    // internal in-process ORT EP communication channel. It must never be
+    // reachable from a file-loaded ONNX model, where external_data fields are
+    // attacker-controlled. Reject it here.
+    if (m_data_location == ORT_MEM_ADDR) {
+        throw error::invalid_external_data{*this};
+    }
 #ifdef ENABLE_OPENVINO_DEBUG
     if (m_sha1_digest.size() > 0) {
         OPENVINO_WARN("SHA1 checksum is not supported");
