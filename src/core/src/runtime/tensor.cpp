@@ -5,6 +5,7 @@
 #include "openvino/runtime/tensor.hpp"
 
 #include <fstream>
+#include <limits>
 #include <numeric>
 
 #include "openvino/core/except.hpp"
@@ -256,7 +257,12 @@ Tensor read_tensor_data(const std::filesystem::path& file_name,
                         offset_in_bytes,
                         " file size=",
                         file_size);
-        const auto available_size = static_cast<size_t>(file_size - offset_in_bytes);
+        const auto raw_available = file_size - offset_in_bytes;  // uintmax_t
+        OPENVINO_ASSERT(raw_available <= std::numeric_limits<size_t>::max(),
+                        "File region exceeds addressable size_t range: ",
+                        raw_available,
+                        " bytes");
+        const auto available_size = static_cast<size_t>(raw_available);
         const auto static_shape = resolve_static_shape(available_size, element_type, partial_shape);
         const auto tensor = std::make_shared<ov::Tensor>(element_type, static_shape);
         read_tensor_via_istream(file_name, *tensor.get(), offset_in_bytes);
