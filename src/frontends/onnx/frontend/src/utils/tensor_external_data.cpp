@@ -62,7 +62,9 @@ Buffer<ov::MappedMemory> TensorExternalData::load_external_mmap_data(const std::
         mapped_memory = ov::load_mmap_object(full_path);
         (*cache)[full_path] = mapped_memory;
     }
-    if (m_data_length > mapped_memory->size() || mapped_memory->size() == 0) {
+    if (mapped_memory->size() == 0 ||
+        m_offset > mapped_memory->size() ||
+        m_data_length > mapped_memory->size() - m_offset) {
         throw error::invalid_external_data{*this};
     }
     return std::make_shared<ov::SharedBuffer<std::shared_ptr<ov::MappedMemory>>>(
