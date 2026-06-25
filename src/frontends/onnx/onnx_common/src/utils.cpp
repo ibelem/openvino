@@ -104,7 +104,9 @@ PartialShape onnx_to_ov_shape(const TensorShapeProto& onnx_shape) {
     std::vector<ov::Dimension> dims;
     for (const auto& onnx_dim : onnx_shape.dim()) {
         if (onnx_dim.has_dim_value()) {
-            dims.emplace_back(onnx_dim.dim_value());
+            const auto dim_val = onnx_dim.dim_value();
+            OPENVINO_ASSERT(dim_val >= 0, "ONNX model contains a negative static dimension value: ", dim_val);
+            dims.emplace_back(dim_val);
         } else  // has_dim_param() == true or it is empty dim
         {
             dims.push_back(ov::Dimension::dynamic());
