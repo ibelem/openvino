@@ -137,6 +137,10 @@ TDim resolve_minus_one_dim(const Product<TDim>& product) {
     auto& product_out = product.get_dynamic_out();
 
     if (minus_one_dim.is_static() && product_out.is_static()) {
+        if (product_out.get_length() == 0) {
+            // caught by post-hoc check at line 349
+            return TDim{0};
+        }
         minus_one_dim /= product_out.get_length();
     } else {
         using namespace ov::util;
