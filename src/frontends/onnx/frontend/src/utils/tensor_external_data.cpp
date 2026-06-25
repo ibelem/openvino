@@ -117,6 +117,12 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
+    // Upper bound on the data length to refuse absurd attacker-controlled sizes
+    // before any allocation or memcpy is attempted.
+    constexpr uint64_t max_mem_data_length = static_cast<uint64_t>(2) * 1024 * 1024 * 1024;  // 2GB
+    if (m_data_length > max_mem_data_length) {
+        throw error::invalid_external_data{*this};
+    }
     // Empty node will create a constant with zero shape and zero size external data.
     bool is_valid_buffer = m_offset && m_data_length;
     bool is_empty_buffer = (m_data_length == 0);
@@ -124,6 +130,9 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
         throw error::invalid_external_data{*this};
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
+    if (m_data_length > 0 && addr_ptr == nullptr) {
+        throw error::invalid_external_data{*this};
+    }
     auto aligned_memory = std::make_shared<ov::AlignedBuffer>(m_data_length);
     if (m_data_length > 0) {
         std::memcpy(aligned_memory->get_ptr<char>(), addr_ptr, m_data_length);
