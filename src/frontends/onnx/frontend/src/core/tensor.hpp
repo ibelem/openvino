@@ -194,6 +194,9 @@ public:
           m_shape{std::begin(tensor.dims()), std::end(tensor.dims())},
           m_model_dir{model_dir},
           m_mmap_cache{mmap_cache} {
+        for (auto d : tensor.dims()) {
+            FRONT_END_GENERAL_CHECK(d >= 0, "Tensor dim must be non-negative");
+        }
         if (m_shape == ov::Shape{0} && get_data_size() == 1) {
             // It's possible to construct a tensor in ONNX with "dims: 0" property
             // Such tensor contains a scalar. This results in a ov::Shape{0} stored in m_shape.
