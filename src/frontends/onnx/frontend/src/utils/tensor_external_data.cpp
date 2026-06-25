@@ -5,6 +5,7 @@
 #include "utils/tensor_external_data.hpp"
 
 #include <fstream>
+#include <limits>
 #include <sstream>
 
 #include "exceptions.hpp"
@@ -121,6 +122,14 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     bool is_valid_buffer = m_offset && m_data_length;
     bool is_empty_buffer = (m_data_length == 0);
     if (!(is_valid_buffer || is_empty_buffer)) {
+        throw error::invalid_external_data{*this};
+    }
+    // The ORT_MEM_ADDR path expects m_offset to be a real in-process pointer supplied by
+    // ORT's own runtime, never a value parsed from an untrusted external ONNX model file.
+    // Guard against integer overflow in the implied pointer arithmetic so a crafted offset
+    // cannot wrap the address range used as the memcpy source below.
+    if (m_data_length > 0 &&
+        m_offset > std::numeric_limits<uintptr_t>::max() - static_cast<uintptr_t>(m_data_length)) {
         throw error::invalid_external_data{*this};
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
