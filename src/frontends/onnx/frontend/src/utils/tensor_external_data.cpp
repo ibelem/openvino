@@ -28,6 +28,12 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
             m_sha1_digest = entry.value();
         }
     }
+    // The ORT_MEM_ADDR marker designates an ORT-internal in-process shared-memory address and must
+    // never originate from a deserialized (file-sourced) TensorProto, otherwise an attacker-supplied
+    // offset would be reinterpreted as a raw pointer in load_external_mem_data().
+    if (m_data_location == ORT_MEM_ADDR) {
+        throw error::invalid_external_data{*this};
+    }
 #ifdef ENABLE_OPENVINO_DEBUG
     if (m_sha1_digest.size() > 0) {
         OPENVINO_WARN("SHA1 checksum is not supported");
