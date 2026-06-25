@@ -7,6 +7,7 @@
 #include <stack>
 
 #include "itt.hpp"
+#include "openvino/op/loop.hpp"
 
 namespace ov {
 op::v0::TensorIterator::TensorIterator(const OutputVector& values) : op::util::SubGraphOp(values) {}
@@ -31,6 +32,7 @@ void op::v0::TensorIterator::revalidate_and_infer_types_for_body_ops() {
         auto node = nodes_to_do.top();
         if (nodes_done.count(node) == 0) {
             OPENVINO_ASSERT(ov::as_type_ptr<op::v0::TensorIterator>(node) == nullptr, "No nested TensorIterator");
+            OPENVINO_ASSERT(ov::as_type_ptr<op::v5::Loop>(node) == nullptr, "No nested Loop");
             bool can_add = true;
             size_t arg_count = node->get_input_size();
             for (size_t i = 0; i < arg_count; ++i) {
