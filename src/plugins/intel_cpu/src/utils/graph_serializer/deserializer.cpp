@@ -155,8 +155,13 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
 
     // Check if model header contains valid data.
     bool is_valid_model = (hdr.custom_data_offset == sizeof(hdr)) &&
+                          (hdr.consts_offset >= hdr.custom_data_offset) &&
                           (hdr.custom_data_size == hdr.consts_offset - hdr.custom_data_offset) &&
-                          (hdr.consts_size == hdr.model_offset - hdr.consts_offset) && (file_size > hdr.model_offset);
+                          (hdr.model_offset >= hdr.consts_offset) &&
+                          (hdr.consts_size == hdr.model_offset - hdr.consts_offset) &&
+                          (file_size > hdr.model_offset) && (hdr.model_offset <= file_size) &&
+                          (hdr.custom_data_offset + hdr.custom_data_size <= file_size) &&
+                          (hdr.consts_offset + hdr.consts_size <= file_size);
     OPENVINO_ASSERT(is_valid_model, "[CPU] Could not deserialize by device xml header.");
 
     hdr.model_size = file_size - hdr.model_offset;
@@ -217,8 +222,13 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
 
     // Check if model header contains valid data.
     bool is_valid_model = (hdr.custom_data_offset == sizeof(hdr)) &&
+                          (hdr.consts_offset >= hdr.custom_data_offset) &&
                           (hdr.custom_data_size == hdr.consts_offset - hdr.custom_data_offset) &&
-                          (hdr.consts_size == hdr.model_offset - hdr.consts_offset) && (file_size > hdr.model_offset);
+                          (hdr.model_offset >= hdr.consts_offset) &&
+                          (hdr.consts_size == hdr.model_offset - hdr.consts_offset) &&
+                          (file_size > hdr.model_offset) && (hdr.model_offset <= file_size) &&
+                          (hdr.custom_data_offset + hdr.custom_data_size <= file_size) &&
+                          (hdr.consts_offset + hdr.consts_size <= file_size);
     OPENVINO_ASSERT(is_valid_model, "[CPU] Could not deserialize by device xml header.");
 
     hdr.model_size = file_size - hdr.model_offset;
