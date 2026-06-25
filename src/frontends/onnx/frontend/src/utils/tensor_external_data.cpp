@@ -49,6 +49,19 @@ Buffer<ov::MappedMemory> TensorExternalData::load_external_mmap_data(const std::
         throw error::invalid_external_data{e.what()};
     }
 
+    // The path resolved by sanitize_path is consumed by subsequent OS path-resolution
+    // calls (file_size / load_mmap_object), which re-traverse the filesystem and can be
+    // raced by symlink/path swaps between the check and the open. Re-resolve immediately
+    // before use and require the containment invariant to still hold; mismatch means the
+    // path changed under us, so refuse to load.
+    try {
+        if (ov::util::sanitize_path(model_dir, ov::util::make_path(m_data_location)) != full_path) {
+            throw error::invalid_external_data{*this};
+        }
+    } catch (const std::runtime_error& e) {
+        throw error::invalid_external_data{e.what()};
+    }
+
     const int64_t file_size = ov::util::file_size(full_path);
     if (file_size <= 0 || m_data_length > static_cast<uint64_t>(file_size) ||
         m_offset > static_cast<uint64_t>(file_size) - m_data_length) {
@@ -75,6 +88,16 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
     std::filesystem::path full_path;
     try {
         full_path = ov::util::sanitize_path(model_dir, ov::util::make_path(m_data_location));
+    } catch (const std::runtime_error& e) {
+        throw error::invalid_external_data{e.what()};
+    }
+
+    // See load_external_mmap_data: re-resolve immediately before the file is opened and
+    // require the containment invariant to still hold to shrink the check-to-open race.
+    try {
+        if (ov::util::sanitize_path(model_dir, ov::util::make_path(m_data_location)) != full_path) {
+            throw error::invalid_external_data{*this};
+        }
     } catch (const std::runtime_error& e) {
         throw error::invalid_external_data{e.what()};
     }
