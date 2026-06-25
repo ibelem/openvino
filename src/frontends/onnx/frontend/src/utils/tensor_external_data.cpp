@@ -1,3 +1,4 @@
+```
 // Copyright (C) 2018-2026 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -20,6 +21,9 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
+            if (m_data_location == ORT_MEM_ADDR) {
+                throw error::invalid_external_data{*this};
+            }
         } else if (entry.key() == "offset") {
             m_offset = std::stoull(entry.value());
         } else if (entry.key() == "length") {
@@ -38,6 +42,7 @@ TensorExternalData::TensorExternalData(const std::string& location, size_t offse
     m_data_location = location;
     m_offset = offset;
     m_data_length = size;
+    m_from_ort_ep = true;
 }
 
 Buffer<ov::MappedMemory> TensorExternalData::load_external_mmap_data(const std::filesystem::path& model_dir,
@@ -114,7 +119,7 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
 }
 
 Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
-    if (m_data_location != ORT_MEM_ADDR) {
+    if (!m_from_ort_ep || m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
     // Empty node will create a constant with zero shape and zero size external data.
@@ -150,3 +155,4 @@ std::string TensorExternalData::to_string() const {
 }  // namespace onnx
 }  // namespace frontend
 }  // namespace ov
+```
