@@ -5,6 +5,7 @@
 #include "openvino/op/loop.hpp"
 
 #include <climits>
+#include <limits>
 
 #include "itt.hpp"
 #include "openvino/core/validation_util.hpp"
@@ -120,6 +121,9 @@ void Loop::validate_and_infer_types() {
         NODE_VALIDATION_CHECK(this,
                               val.size() == 1,
                               "The number of values in the TripCount constant is greater than 1");
+        NODE_VALIDATION_CHECK(this,
+                              val[0] >= 0,
+                              "TripCount must be a non-negative value");
         if (condition_always_true)
             m_num_iterations = val[0];
     }
@@ -292,7 +296,12 @@ void Loop::validate_and_infer_types() {
                 }
 
                 if (out_shape[axis].is_static() && m_num_iterations != -1) {
-                    out_shape[axis] = Dimension{out_shape[axis].get_length() * m_num_iterations};
+                    int64_t dim_len = out_shape[axis].get_length();
+                    if (m_num_iterations > 0 && dim_len > std::numeric_limits<int64_t>::max() / m_num_iterations) {
+                        out_shape[axis] = Dimension::dynamic();
+                    } else {
+                        out_shape[axis] = Dimension{dim_len * m_num_iterations};
+                    }
                 } else {
                     out_shape[axis] = Dimension::dynamic();
                 }
