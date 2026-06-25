@@ -16,6 +16,10 @@ namespace ov {
 namespace frontend {
 namespace onnx {
 namespace detail {
+namespace {
+// Upper bound for an external_data tensor length parsed from a model file (16 GB).
+constexpr uint64_t MAX_TENSOR_SIZE_BYTES = 1ULL << 34;
+}  // namespace
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
@@ -24,9 +28,15 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
             m_offset = std::stoull(entry.value());
         } else if (entry.key() == "length") {
             m_data_length = std::stoull(entry.value());
+            if (m_data_length > MAX_TENSOR_SIZE_BYTES) {
+                OPENVINO_THROW("external_data length exceeds maximum");
+            }
         } else if (entry.key() == "checksum") {
             m_sha1_digest = entry.value();
         }
+    }
+    if (m_data_location == ORT_MEM_ADDR) {
+        throw error::invalid_external_data{*this};
     }
 #ifdef ENABLE_OPENVINO_DEBUG
     if (m_sha1_digest.size() > 0) {
