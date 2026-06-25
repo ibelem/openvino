@@ -17,6 +17,7 @@ namespace frontend {
 namespace onnx {
 namespace detail {
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
+    m_from_proto = true;
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
@@ -35,6 +36,7 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
 #endif
 }
 TensorExternalData::TensorExternalData(const std::string& location, size_t offset, size_t size) {
+    m_from_proto = false;
     m_data_location = location;
     m_offset = offset;
     m_data_length = size;
@@ -114,6 +116,13 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
 }
 
 Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
+    // The ORT_MEM_ADDR mechanism interprets m_offset as a raw in-process memory address and is only
+    // valid for trusted in-process ORT shared-memory tensors. It must never be reachable from an
+    // untrusted model file, where m_offset/m_data_length are attacker-controlled. Reject the call
+    // when this object was constructed directly from a TensorProto (i.e., file-based loading).
+    if (m_from_proto) {
+        throw error::invalid_external_data{*this};
+    }
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
@@ -121,6 +130,11 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     bool is_valid_buffer = m_offset && m_data_length;
     bool is_empty_buffer = (m_data_length == 0);
     if (!(is_valid_buffer || is_empty_buffer)) {
+        throw error::invalid_external_data{*this};
+    }
+    // Defense-in-depth: bound the allocation size to avoid allocation-size DoS.
+    constexpr size_t max_mem_data_length = static_cast<size_t>(1) << 40;  // 1TB
+    if (m_data_length > max_mem_data_length) {
         throw error::invalid_external_data{*this};
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
