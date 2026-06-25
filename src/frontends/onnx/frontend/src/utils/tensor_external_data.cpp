@@ -117,10 +117,7 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
-    // Empty node will create a constant with zero shape and zero size external data.
-    bool is_valid_buffer = m_offset && m_data_length;
-    bool is_empty_buffer = (m_data_length == 0);
-    if (!(is_valid_buffer || is_empty_buffer)) {
+    if (m_offset == 0 || !is_registered_ort_shared_region(m_offset, m_data_length)) {
         throw error::invalid_external_data{*this};
     }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
