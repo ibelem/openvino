@@ -68,8 +68,15 @@ inline std::vector<T> __get_data(const void* data, const size_t data_size) {
 
 template <typename T>
 inline std::vector<T> __get_raw_data(const std::string& raw_data, int onnx_data_type) {
+    const size_t onnx_elem_size = get_onnx_data_size(onnx_data_type);
+    OPENVINO_ASSERT(sizeof(T) == onnx_elem_size,
+                    "raw_data type mismatch: sizeof(T)=",
+                    sizeof(T),
+                    " != onnx element size=",
+                    onnx_elem_size);
     auto it = reinterpret_cast<const T*>(raw_data.data());
-    return std::vector<T>(it, it + (raw_data.size() / get_onnx_data_size(onnx_data_type)));
+    OPENVINO_ASSERT(raw_data.size() % sizeof(T) == 0, "raw_data size not aligned with element size");
+    return std::vector<T>(it, it + (raw_data.size() / sizeof(T)));
 }
 
 }  // namespace
