@@ -292,7 +292,10 @@ void Loop::validate_and_infer_types() {
                 }
 
                 if (out_shape[axis].is_static() && m_num_iterations != -1) {
-                    out_shape[axis] = Dimension{out_shape[axis].get_length() * m_num_iterations};
+                    const int64_t slice_len = out_shape[axis].get_length();
+                    OPENVINO_ASSERT(m_num_iterations <= 0 || slice_len <= INT64_MAX / m_num_iterations,
+                                    "TripCount * slice_size overflows int64_t");
+                    out_shape[axis] = Dimension{slice_len * m_num_iterations};
                 } else {
                     out_shape[axis] = Dimension::dynamic();
                 }
