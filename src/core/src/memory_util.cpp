@@ -50,7 +50,9 @@ size_t get_memory_size(const element::Type& type, const size_t n) {
     } else if (element::is_bit_type(type) || element::is_nibble_type(type)) {
         return get_bit_memory_size(type, n);
     } else {
-        return (type.bitwidth() / 8) * n;
+        size_t result;
+        OPENVINO_ASSERT(!mul_overflow<size_t>(type.bitwidth() / 8, n, result), "byte size overflow");
+        return result;
     }
 }
 
