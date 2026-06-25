@@ -164,7 +164,12 @@ TDim resolve_minus_one_dim(const Product<TDim>& product) {
 template <class TDim,
           typename std::enable_if<!std::is_same<typename std::decay<TDim>::type, Dimension>::value>::type* = nullptr>
 TDim resolve_minus_one_dim(const Product<TDim>& product) {
-    return product.get_static_in() / product.get_static_out().get_length();
+    const auto denom = product.get_static_out().get_length();
+    if (denom == 0) {
+        // caller already validates the 0/0 vs nonzero/0 case at line 349
+        return TDim{0};
+    }
+    return product.get_static_in() / denom;
 }
 
 /**
