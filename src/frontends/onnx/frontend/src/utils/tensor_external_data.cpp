@@ -21,9 +21,19 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
         } else if (entry.key() == "offset") {
-            m_offset = std::stoull(entry.value());
+            try {
+                m_offset = std::stoull(entry.value());
+            } catch (const std::exception& e) {
+                throw error::invalid_external_data{
+                    "Invalid 'offset' value '" + entry.value() + "': " + e.what()};
+            }
         } else if (entry.key() == "length") {
-            m_data_length = std::stoull(entry.value());
+            try {
+                m_data_length = std::stoull(entry.value());
+            } catch (const std::exception& e) {
+                throw error::invalid_external_data{
+                    "Invalid 'length' value '" + entry.value() + "': " + e.what()};
+            }
         } else if (entry.key() == "checksum") {
             m_sha1_digest = entry.value();
         }
