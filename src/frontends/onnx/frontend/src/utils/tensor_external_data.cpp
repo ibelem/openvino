@@ -17,6 +17,7 @@ namespace frontend {
 namespace onnx {
 namespace detail {
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
+    m_from_ort_runtime = false;
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
@@ -38,6 +39,7 @@ TensorExternalData::TensorExternalData(const std::string& location, size_t offse
     m_data_location = location;
     m_offset = offset;
     m_data_length = size;
+    m_from_ort_runtime = true;
 }
 
 Buffer<ov::MappedMemory> TensorExternalData::load_external_mmap_data(const std::filesystem::path& model_dir,
@@ -114,6 +116,9 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_data(const std::file
 }
 
 Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
+    if (!m_from_ort_runtime) {
+        throw error::invalid_external_data{*this};
+    }
     if (m_data_location != ORT_MEM_ADDR) {
         throw error::invalid_external_data{*this};
     }
