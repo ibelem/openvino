@@ -123,6 +123,10 @@ Buffer<ov::AlignedBuffer> TensorExternalData::load_external_mem_data() const {
     if (!(is_valid_buffer || is_empty_buffer)) {
         throw error::invalid_external_data{*this};
     }
+    constexpr uint64_t MAX_ALLOWED_TENSOR_BYTES = 0x80000000ull;  // 2 GiB
+    if (m_data_length > MAX_ALLOWED_TENSOR_BYTES) {
+        throw error::invalid_external_data{*this};
+    }
     char* addr_ptr = reinterpret_cast<char*>(m_offset);
     auto aligned_memory = std::make_shared<ov::AlignedBuffer>(m_data_length);
     if (m_data_length > 0) {
