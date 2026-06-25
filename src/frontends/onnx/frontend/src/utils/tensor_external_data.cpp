@@ -17,13 +17,20 @@ namespace frontend {
 namespace onnx {
 namespace detail {
 TensorExternalData::TensorExternalData(const TensorProto& tensor) {
+    auto parse_uint64 = [](const std::string& s, const char* field) -> uint64_t {
+        try {
+            return std::stoull(s);
+        } catch (const std::exception& e) {
+            throw error::invalid_external_data{"Invalid " + std::string(field) + " value '" + s + "': " + e.what()};
+        }
+    };
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
         } else if (entry.key() == "offset") {
-            m_offset = std::stoull(entry.value());
+            m_offset = parse_uint64(entry.value(), "offset");
         } else if (entry.key() == "length") {
-            m_data_length = std::stoull(entry.value());
+            m_data_length = parse_uint64(entry.value(), "length");
         } else if (entry.key() == "checksum") {
             m_sha1_digest = entry.value();
         }
