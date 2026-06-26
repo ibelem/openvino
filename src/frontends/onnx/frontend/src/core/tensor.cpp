@@ -436,6 +436,8 @@ std::shared_ptr<ov::op::v0::Constant> Tensor::get_ov_constant() const {
     ov::element::Type ov_type = get_ov_type();
     size_t element_count = get_data_size();
     const auto shape_elements = shape_size(m_shape);
+    FRONT_END_GENERAL_CHECK(shape_elements <= SIZE_MAX / ov_type.size(),
+                            "shape_size overflows or yields implausibly large element count");
     if (ov::element::is_nibble_type(ov_type)) {
         element_count *= 2;  // Each byte contains 2 data items
         if (shape_elements % 2) {
