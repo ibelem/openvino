@@ -596,7 +596,8 @@ bool Constant::evaluate(TensorVector& outputs, const TensorVector& inputs) const
         auto dst_strings = static_cast<std::string*>(outputs[0].data());
         std::copy_n(src_strings, num_elements, dst_strings);
     } else {
-        std::memcpy(outputs[0].data(), get_data_ptr(), outputs[0].get_byte_size());
+        const size_t copy_bytes = std::min(outputs[0].get_byte_size(), get_byte_size());
+        std::memcpy(outputs[0].data(), get_data_ptr(), copy_bytes);
     }
 
     return true;
