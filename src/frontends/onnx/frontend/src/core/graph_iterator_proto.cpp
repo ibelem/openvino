@@ -292,7 +292,17 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
         }
     }
     if (ext_location == detail::ORT_MEM_ADDR) {
-        // Specific ONNX Runtime Case when it passes a model with self-managed data
+        // Specific ONNX Runtime Case when it passes a model with self-managed data.
+        // This path stores a raw user-space pointer derived from the file's "offset"
+        // field, so it must never be taken for untrusted, file-loaded models. Reject
+        // it unless the model was constructed by the trusted ORT interop layer and
+        // validate that the supplied address/length are plausible before any cast.
+        if (!graph_iterator->is_ort_trusted_source()) {
+            throw std::runtime_error("ORT_MEM_ADDR not allowed for untrusted models");
+        }
+        if (ext_data_offset == 0 || ext_data_length == 0) {
+            throw std::runtime_error("Invalid ORT_MEM_ADDR address or length");
+        }
         tensor_meta_info.m_is_raw = true;
         tensor_meta_info.m_tensor_data = reinterpret_cast<uint8_t*>(ext_data_offset);
         tensor_meta_info.m_tensor_data_size = ext_data_length;
@@ -499,6 +509,7 @@ GraphIteratorProto::GraphIteratorProto(GraphIteratorProto* parent, const GraphPr
     m_stream_cache = parent->m_stream_cache;
     m_data_holder = parent->m_data_holder;
     m_model = parent->m_model;
+    m_ort_trusted_source = parent->m_ort_trusted_source;
 }
 
 void GraphIteratorProto::initialize(const std::filesystem::path& path) {
