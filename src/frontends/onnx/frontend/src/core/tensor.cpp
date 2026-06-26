@@ -18,6 +18,15 @@ size_t raw_value_count(const std::shared_ptr<TensorONNXPlace>& place) {
     FRONT_END_GENERAL_CHECK(byte_size % sizeof(StorageT) == 0, "Raw tensor data size is not aligned with element size");
     return byte_size / sizeof(StorageT);
 }
+
+size_t safe_shape_size(const ov::Shape& s) {
+    size_t r = 1;
+    for (auto d : s) {
+        FRONT_END_GENERAL_CHECK(d == 0 || r <= SIZE_MAX / d, "shape overflow");
+        r *= d;
+    }
+    return r;
+}
 }  // namespace
 
 detail::MappedMemoryHandles TensorONNXPlace::get_mmap_cache() {
@@ -435,7 +444,7 @@ std::shared_ptr<ov::op::v0::Constant> Tensor::get_ov_constant() const {
     }
     ov::element::Type ov_type = get_ov_type();
     size_t element_count = get_data_size();
-    const auto shape_elements = shape_size(m_shape);
+    const auto shape_elements = safe_shape_size(m_shape);
     if (ov::element::is_nibble_type(ov_type)) {
         element_count *= 2;  // Each byte contains 2 data items
         if (shape_elements % 2) {
