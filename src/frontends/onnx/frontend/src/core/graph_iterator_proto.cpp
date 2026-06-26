@@ -301,7 +301,7 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
     }
     const auto full_path = ov::util::sanitize_path(graph_iterator->get_model_dir(), ov::util::make_path(ext_location));
     const int64_t file_size = ov::util::file_size(full_path);
-    if ((file_size <= 0 && ext_data_length > 0) || ext_data_length > static_cast<uint64_t>(file_size) ||
+    if (file_size <= 0 || ext_data_length > static_cast<uint64_t>(file_size) ||
         ext_data_offset > static_cast<uint64_t>(file_size) - ext_data_length) {
         // not_existed_file.data, offset: 4096, data_length: 16)
         std::stringstream ss;
