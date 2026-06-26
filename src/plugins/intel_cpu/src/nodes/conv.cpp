@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <climits>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -805,9 +806,15 @@ void Convolution::addFusedNode(const NodePtr& fusingNode) {
         // @todo padding should be updated by the graph optimizer / transformation
         for (size_t j = 0; j < m_attrs.paddingR.size(); j++) {
             int with_group = m_attrs.isGrouped ? 1 : 0;
-            int krn = weightDims[with_group + 2 + j];
-            int src = getInputShapeAtPort(0).getStaticDims()[2 + j];
-            int dst = fusingNode->getOutputShapeAtPort(0).getStaticDims()[2 + j];
+            const auto krnDim = weightDims[with_group + 2 + j];
+            const auto srcDim = getInputShapeAtPort(0).getStaticDims()[2 + j];
+            const auto dstDim = fusingNode->getOutputShapeAtPort(0).getStaticDims()[2 + j];
+            OPENVINO_ASSERT(krnDim <= static_cast<size_t>(INT_MAX), "kernel dim overflow");
+            OPENVINO_ASSERT(srcDim <= static_cast<size_t>(INT_MAX), "source dim overflow");
+            OPENVINO_ASSERT(dstDim <= static_cast<size_t>(INT_MAX), "destination dim overflow");
+            int krn = static_cast<int>(krnDim);
+            int src = static_cast<int>(srcDim);
+            int dst = static_cast<int>(dstDim);
 
             krn = (krn - 1) * (m_attrs.dilation[j] + 1) + 1;
             int calc_dst = (src - krn + m_attrs.paddingL[j]) / m_attrs.stride[j] + 1;
