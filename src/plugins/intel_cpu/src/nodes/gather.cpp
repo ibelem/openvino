@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <oneapi/dnnl/dnnl_common.hpp>
@@ -169,9 +170,23 @@ void Gather::initSupportedPrimitiveDescriptors() {
 
         afterAxisSizeInBytes = afterAxisSize * dataTypeSize;
         afterAxisSizeInBytesOut = afterAxisSize * outTypeSize;
+        CPU_NODE_ASSERT(axisDim >= 0 && (afterAxisSize == 0 || static_cast<uint64_t>(axisDim) <=
+                                                                   std::numeric_limits<uint64_t>::max() / afterAxisSize),
+                        "axis dimension overflow.");
         axisAndAfterAxisSize = axisDim * afterAxisSize;
+        CPU_NODE_ASSERT(axisDim >= 0 &&
+                            (afterAxisSizeInBytes == 0 || static_cast<uint64_t>(axisDim) <=
+                                                              std::numeric_limits<uint64_t>::max() / afterAxisSizeInBytes),
+                        "axis dimension overflow.");
         axisAndAfterAxisSizeInBytes = axisDim * afterAxisSizeInBytes;
+        CPU_NODE_ASSERT(axisAndAfterAxisSize == 0 ||
+                            betweenBatchAndAxisSize <= std::numeric_limits<uint64_t>::max() / axisAndAfterAxisSize,
+                        "axis dimension overflow.");
         srcAfterBatchSize = betweenBatchAndAxisSize * axisAndAfterAxisSize;
+        CPU_NODE_ASSERT(axisAndAfterAxisSizeInBytes == 0 ||
+                            betweenBatchAndAxisSize <=
+                                std::numeric_limits<uint64_t>::max() / axisAndAfterAxisSizeInBytes,
+                        "axis dimension overflow.");
         srcAfterBatchSizeInBytes = betweenBatchAndAxisSize * axisAndAfterAxisSizeInBytes;
     }
     if (isDataShapeStat) {
@@ -423,9 +438,23 @@ void Gather::prepareParams() {
 
         afterAxisSizeInBytes = afterAxisSize * dataTypeSize;
         afterAxisSizeInBytesOut = afterAxisSize * outTypeSize;
+        CPU_NODE_ASSERT(axisDim >= 0 && (afterAxisSize == 0 || static_cast<uint64_t>(axisDim) <=
+                                                                   std::numeric_limits<uint64_t>::max() / afterAxisSize),
+                        "axis dimension overflow.");
         axisAndAfterAxisSize = axisDim * afterAxisSize;
+        CPU_NODE_ASSERT(axisDim >= 0 &&
+                            (afterAxisSizeInBytes == 0 || static_cast<uint64_t>(axisDim) <=
+                                                              std::numeric_limits<uint64_t>::max() / afterAxisSizeInBytes),
+                        "axis dimension overflow.");
         axisAndAfterAxisSizeInBytes = axisDim * afterAxisSizeInBytes;
+        CPU_NODE_ASSERT(axisAndAfterAxisSize == 0 ||
+                            betweenBatchAndAxisSize <= std::numeric_limits<uint64_t>::max() / axisAndAfterAxisSize,
+                        "axis dimension overflow.");
         srcAfterBatchSize = betweenBatchAndAxisSize * axisAndAfterAxisSize;
+        CPU_NODE_ASSERT(axisAndAfterAxisSizeInBytes == 0 ||
+                            betweenBatchAndAxisSize <=
+                                std::numeric_limits<uint64_t>::max() / axisAndAfterAxisSizeInBytes,
+                        "axis dimension overflow.");
         srcAfterBatchSizeInBytes = betweenBatchAndAxisSize * axisAndAfterAxisSizeInBytes;
 
         if (isIdxShapeStat) {
