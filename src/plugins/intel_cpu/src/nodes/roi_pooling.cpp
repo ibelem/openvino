@@ -623,9 +623,9 @@ private:
             if (roi_batch_ind == -1) {
                 break;
             }
-            OPENVINO_ASSERT(0 <= roi_batch_ind && roi_batch_ind <= jpp.b_num,
+            OPENVINO_ASSERT(0 <= roi_batch_ind && roi_batch_ind < jpp.b_num,
                             "takes incorrect roi_ind, max roi_ind = ",
-                            jpp.b_num);
+                            jpp.b_num - 1);
         }
 
         cpuParallel->parallel_for4d(MB, cb_work, jpp.oh, jpp.ow, [&](int n, int cbb, int oh, int ow) {
@@ -643,9 +643,9 @@ private:
                 const auto* src_roi_ptr = &src_roi[roi_off];
 
                 auto roi_batch_ind = static_cast<int>(src_roi_ptr[0]);
-                OPENVINO_ASSERT(0 <= roi_batch_ind && roi_batch_ind <= jpp.b_num,
+                OPENVINO_ASSERT(0 <= roi_batch_ind && roi_batch_ind < jpp.b_num,
                                 "takes incorrect roi_ind, max roi_ind = ",
-                                jpp.b_num);
+                                jpp.b_num - 1);
 
                 if (jpp.alg == Algorithm::ROIPoolingMax) {
                     auto roi_start_w = static_cast<int>(round(src_roi_ptr[1] * jpp.spatial_scale));
