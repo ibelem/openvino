@@ -872,6 +872,8 @@ void ScatterUpdate::execute([[maybe_unused]] const dnnl::stream& strm) {
             DEBUG_LOG(getName(), " exec1DCase");
             auto updateCnt = (updateDims.empty()) ? 1 : updateDims[0];
             auto srcLength = srcMemPtr->getStaticDims()[0];
+            CPU_NODE_ASSERT(updateCnt <= srcLength,
+                            "have more updates than output tensor elements in 1D fast path");
             auto* psrc = reinterpret_cast<int32_t*>(srcPtr);
             auto* pdst = reinterpret_cast<int32_t*>(dstPtr);
             for (size_t i = 0; i < srcLength; i++) {
@@ -880,6 +882,8 @@ void ScatterUpdate::execute([[maybe_unused]] const dnnl::stream& strm) {
             auto* pindices = reinterpret_cast<int32_t*>(indicesPtr);
             auto* pupdate = reinterpret_cast<int32_t*>(updatePtr);
             for (size_t i = 0; i < updateCnt; i++) {
+                CPU_NODE_ASSERT(pindices[i] >= 0 && static_cast<size_t>(pindices[i]) < srcLength,
+                                "indices value out of range in 1D fast path");
                 pdst[pindices[i]] = pupdate[i];
             }
             return;
