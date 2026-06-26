@@ -1,3 +1,4 @@
+```cpp
 // Copyright (C) 2018-2026 Intel Corporation
 // SPDX-License-Identifier: Apache-2.0
 //
@@ -984,7 +985,11 @@ void Gather::exec1DCase() {
                 ii = axisDim;
             }
         }
-        pdst[i] = psrc[ii];
+        if (ii >= 0 && static_cast<size_t>(ii) < axisDim) {
+            pdst[i] = psrc[ii];
+        } else {
+            pdst[i] = 0u;
+        }
     }
 }
 
@@ -1037,3 +1042,4 @@ bool Gather::canFuse(const NodePtr& node) const {
 }
 
 }  // namespace ov::intel_cpu::node
+```
