@@ -446,6 +446,9 @@ std::shared_ptr<ov::op::v0::Constant> Tensor::get_ov_constant() const {
     std::shared_ptr<ov::AlignedBuffer> constant_buffer;
     bool external_data_valid = has_external_data();
     if (external_data_valid) {
+        if (ov_type == ov::element::string) {
+            throw error::invalid_external_data("External string tensors are not supported for '" + get_name() + "'");
+        }
         const auto ext_data = m_tensor_place != nullptr
                                   ? detail::TensorExternalData(*m_tensor_place->get_data_location(),
                                                                reinterpret_cast<size_t>(m_tensor_place->get_data()),
