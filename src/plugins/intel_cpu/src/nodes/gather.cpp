@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <oneapi/dnnl/dnnl_common.hpp>
@@ -445,6 +446,9 @@ void Gather::prepareParams() {
         specIdxAndAfterAxSizeBOut = specIndicesSize * afterAxisSizeInBytesOut;
         totalWork = beforeBatchSize * betweenBatchAndAxisSize * specIndicesSize * afterAxisSize;
     }
+
+    CPU_NODE_ASSERT(axisAndAfterAxisSizeInBytes <= static_cast<uint64_t>(std::numeric_limits<int32_t>::max()),
+                    "tensor stride overflows int32");
 
 #if defined(OPENVINO_ARCH_X86_64)
     const auto& selectedPD = getSelectedPrimitiveDescriptor();
