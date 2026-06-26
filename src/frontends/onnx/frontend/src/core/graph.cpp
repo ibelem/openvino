@@ -434,6 +434,28 @@ const OpsetImports& Graph::get_opset_imports() const {
     return m_model->get_opset_imports();
 }
 
+namespace {
+// Guards against unbounded recursion when traversing nested ONNX subgraphs.
+// Each Subgraph delegates cache lookups to its parent graph, which may itself
+// be a Subgraph; a malformed (or maliciously crafted) model could create a very
+// deep or cyclic parent chain, leading to stack exhaustion. This guard caps the
+// number of nested parent-graph lookups.
+constexpr size_t MAX_SUBGRAPH_DEPTH = 64;
+thread_local size_t subgraph_cache_lookup_depth = 0;
+struct SubgraphCacheLookupDepthGuard {
+    SubgraphCacheLookupDepthGuard() {
+        FRONT_END_GENERAL_CHECK(subgraph_cache_lookup_depth < MAX_SUBGRAPH_DEPTH,
+                                "Maximum ONNX subgraph nesting depth (",
+                                MAX_SUBGRAPH_DEPTH,
+                                ") exceeded while traversing the parent graph cache");
+        ++subgraph_cache_lookup_depth;
+    }
+    ~SubgraphCacheLookupDepthGuard() {
+        --subgraph_cache_lookup_depth;
+    }
+};
+}  // namespace
+
 Subgraph::Subgraph(const std::shared_ptr<ModelProto>& model_proto, Graph* parent_graph)
     : Graph(parent_graph->model_dir(),
             model_proto,
@@ -446,6 +468,7 @@ bool Subgraph::is_ov_node_in_cache(const std::string& name) const {
     if (m_cache->contains(name)) {
         return true;
     }
+    const SubgraphCacheLookupDepthGuard depth_guard;
     return m_parent_graph->is_ov_node_in_cache(name);
 }
 
@@ -453,6 +476,7 @@ Output<ov::Node> Subgraph::get_ov_node_from_cache(const std::string& name) {
     if (m_cache->contains(name)) {
         return m_cache->get_node(name);
     }
+    const SubgraphCacheLookupDepthGuard depth_guard;
     const auto from_parent_node = m_parent_graph->get_ov_node_from_cache(name);
     if (ov::op::util::is_constant(from_parent_node.get_node()))
         return from_parent_node;
