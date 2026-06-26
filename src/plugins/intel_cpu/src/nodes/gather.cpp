@@ -984,6 +984,10 @@ void Gather::exec1DCase() {
                 ii = axisDim;
             }
         }
+        if (ii < 0 || static_cast<size_t>(ii) >= axisDim) {
+            pdst[i] = 0;
+            continue;
+        }
         pdst[i] = psrc[ii];
     }
 }
