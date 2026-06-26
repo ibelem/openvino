@@ -275,7 +275,8 @@ namespace onnx {
 namespace {
 bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_meta_info,
                                   const TensorProto* tensor_info,
-                                  GraphIteratorProto* graph_iterator) {
+                                  GraphIteratorProto* graph_iterator,
+                                  bool allow_ort_mem_addr = false) {
     std::string ext_location{};
     uint64_t ext_data_offset = 0;
     uint64_t ext_data_length = 0;
@@ -291,8 +292,15 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
             m_sha1_digest = entry.value();
         }
     }
-    if (ext_location == detail::ORT_MEM_ADDR) {
-        // Specific ONNX Runtime Case when it passes a model with self-managed data
+    if (ext_location == detail::ORT_MEM_ADDR && allow_ort_mem_addr) {
+        // Specific ONNX Runtime Case when it passes a model with self-managed data.
+        // This branch interprets the attacker-influenceable "offset" as a raw memory
+        // address, so it is only reachable when the caller explicitly opts in (i.e. the
+        // model was provided by ORT in-process). Even then, require a non-null address
+        // and a non-zero length before performing the cast.
+        if (ext_data_offset == 0 || ext_data_length == 0) {
+            throw std::runtime_error("Invalid ORT in-memory external data descriptor");
+        }
         tensor_meta_info.m_is_raw = true;
         tensor_meta_info.m_tensor_data = reinterpret_cast<uint8_t*>(ext_data_offset);
         tensor_meta_info.m_tensor_data_size = ext_data_length;
