@@ -355,9 +355,18 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
 
         // default value of m_offset is 0
         external_data_stream->seekg(ext_data_offset, std::ios::beg);
+        if (external_data_stream->fail()) {
+            throw std::runtime_error("seekg failed for external data stream");
+        }
 
         external_data_stream->read(static_cast<char*>(static_cast<void*>(data_ptr)),
                                    tensor_meta_info.m_tensor_data_size);
+        if (external_data_stream->fail() ||
+            static_cast<size_t>(external_data_stream->gcount()) != tensor_meta_info.m_tensor_data_size) {
+            throw std::runtime_error("Short or failed read of external tensor data: expected " +
+                                     std::to_string(tensor_meta_info.m_tensor_data_size) + " bytes, got " +
+                                     std::to_string(external_data_stream->gcount()));
+        }
         return true;
     } else if (memory_mode == Internal_MMAP || memory_mode == Internal_Stream) {
         tensor_meta_info.m_external_location = std::make_shared<std::string>(ov::util::path_to_string(full_path));
