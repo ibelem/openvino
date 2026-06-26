@@ -323,6 +323,10 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
             mapped_memory = ov::load_mmap_object(full_path);
             (*cache)[full_path] = mapped_memory;
         }
+        if (mapped_memory == nullptr || ext_data_offset > mapped_memory->size() ||
+            (mapped_memory->size() - ext_data_offset) < resolved_data_length) {
+            throw std::runtime_error("External data file changed between validation and mapping");
+        }
         tensor_meta_info.m_is_raw = true;
         tensor_meta_info.m_tensor_data =
             static_cast<uint8_t*>(static_cast<void*>(mapped_memory->data() + ext_data_offset));
