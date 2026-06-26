@@ -241,6 +241,11 @@ void Constant::allocate_buffer(bool memset_allocation) {
     // and set memory to zero for numeric element types
     const auto byte_size = ov::util::get_memory_size_safe(m_element_type, m_shape);
     OPENVINO_ASSERT(byte_size, "Cannot allocate memory for type: ", m_element_type, " and shape: ", m_shape);
+    constexpr size_t MAX_CONSTANT_BYTES = 1ULL << 30;  // 1 GB limit
+    OPENVINO_ASSERT(*byte_size <= MAX_CONSTANT_BYTES,
+                    "Constant allocation size ",
+                    *byte_size,
+                    " exceeds maximum allowed");
     if (m_element_type == ov::element::string) {
         const auto num_elements = shape_size(m_shape);
         m_data = std::make_shared<StringAlignedBuffer>(num_elements, *byte_size, host_alignment(), memset_allocation);
