@@ -563,6 +563,13 @@ bool Constant::visit_attributes(AttributeVisitor& visitor) {
             // deserialization case when buffer does not exist yet
             std::shared_ptr<ov::StringAlignedBuffer> string_aligned_buffer;
             visitor.on_attribute("value", string_aligned_buffer);
+            OPENVINO_ASSERT(string_aligned_buffer &&
+                                string_aligned_buffer->get_num_elements() == shape_size(m_shape),
+                            "Deserialized string buffer element count (",
+                            string_aligned_buffer ? string_aligned_buffer->get_num_elements() : 0,
+                            ") does not match shape element count (",
+                            shape_size(m_shape),
+                            ")");
             m_data = string_aligned_buffer;
         }
     } else {
