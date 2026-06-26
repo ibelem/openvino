@@ -880,6 +880,8 @@ void ScatterUpdate::execute([[maybe_unused]] const dnnl::stream& strm) {
             auto* pindices = reinterpret_cast<int32_t*>(indicesPtr);
             auto* pupdate = reinterpret_cast<int32_t*>(updatePtr);
             for (size_t i = 0; i < updateCnt; i++) {
+                CPU_NODE_ASSERT(pindices[i] >= 0 && static_cast<size_t>(pindices[i]) < srcDataDim[0],
+                                "ScatterUpdate 1D fast-path: index out of range");
                 pdst[pindices[i]] = pupdate[i];
             }
             return;
