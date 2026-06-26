@@ -880,7 +880,10 @@ void ScatterUpdate::execute([[maybe_unused]] const dnnl::stream& strm) {
             auto* pindices = reinterpret_cast<int32_t*>(indicesPtr);
             auto* pupdate = reinterpret_cast<int32_t*>(updatePtr);
             for (size_t i = 0; i < updateCnt; i++) {
-                pdst[pindices[i]] = pupdate[i];
+                int32_t idx = pindices[i];
+                CPU_NODE_ASSERT(idx >= 0 && static_cast<size_t>(idx) < srcLength,
+                                "have indices value that points to non-existing output tensor element");
+                pdst[idx] = pupdate[i];
             }
             return;
         }
