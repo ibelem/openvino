@@ -549,6 +549,7 @@ void SyncInferRequest::setup_stream_graph() {
     if (nullptr != m_stream_executor) {
         stream_id = m_stream_executor->get_stream_id();
         auto num_graphs = stream_graphs.size();
+        OPENVINO_ASSERT(num_graphs > 0, "[GPU] No graphs loaded");
         stream_id = stream_id % num_graphs;
     }
 
