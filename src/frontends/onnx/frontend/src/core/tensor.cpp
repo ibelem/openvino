@@ -440,7 +440,12 @@ std::shared_ptr<ov::op::v0::Constant> Tensor::get_ov_constant() const {
         element_count *= 2;  // Each byte contains 2 data items
         if (shape_elements % 2) {
             // Odd elements
-            element_count--;
+            if (element_count > 0) {
+                element_count--;
+            } else {
+                throw error::invalid_external_data("Nibble tensor has zero bytes but odd-element shape for '" +
+                                                   get_name() + "'");
+            }
         }
     }
     std::shared_ptr<ov::AlignedBuffer> constant_buffer;
