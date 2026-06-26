@@ -204,6 +204,9 @@ void Gather::initSupportedPrimitiveDescriptors() {
         }
         scale_group_size =
             getInputShapeAtPort(GATHER_DATA).getElementsCount() / getInputShapeAtPort(GATHER_SCALE).getElementsCount();
+        if (scale_group_size == 0) {
+            CPU_NODE_THROW("scale tensor has more elements than data tensor; scale_group_size would be zero");
+        }
         have_scalar_scale = getInputShapeAtPort(GATHER_SCALE).getElementsCount() == 1U;
 
         if (getOriginalInputsNumber() == 5U) {
@@ -216,6 +219,9 @@ void Gather::initSupportedPrimitiveDescriptors() {
             have_scalar_zp = getInputShapeAtPort(GATHER_ZP).getElementsCount() == 1U;
             zp_group_size =
                 getInputShapeAtPort(GATHER_DATA).getElementsCount() / getInputShapeAtPort(GATHER_ZP).getElementsCount();
+            if (zp_group_size == 0) {
+                CPU_NODE_THROW("zp tensor has more elements than data tensor; zp_group_size would be zero");
+            }
             addSupportedPrimDesc({{LayoutType::ncsp, dataPrecision},
                                   {LayoutType::ncsp, ov::element::i32},
                                   {LayoutType::ncsp, ov::element::i32},
