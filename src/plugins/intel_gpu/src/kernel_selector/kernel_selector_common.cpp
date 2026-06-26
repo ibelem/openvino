@@ -4,6 +4,7 @@
 
 #include "kernel_selector_common.h"
 #include "intel_gpu/graph/serialization/string_serializer.hpp"
+#include "openvino/core/except.hpp"
 #include <sstream>
 #include <string>
 
@@ -610,10 +611,19 @@ void clKernelData::save(cldnn::BinaryOutputBuffer& ob) const {
 }
 
 void clKernelData::load(cldnn::BinaryInputBuffer& ib) {
+    // Upper bounds derived from the maximum number of arguments/scalars/buffers
+    // that any supported GPU kernel actually uses. These guard against crafted
+    // blobs that would otherwise trigger huge allocations or out-of-stream reads.
+    const size_t MAX_KERNEL_ARGS = 1024;
+    const size_t MAX_KERNEL_SCALARS = 1024;
+    const size_t MAX_KERNEL_LOCAL_MEMORY_ARGS = 1024;
+    const size_t MAX_KERNEL_MICROKERNELS = 1024;
+
     ib(params.workGroups.global, params.workGroups.local);
 
     typename cldnn::arguments_desc::size_type arguments_desc_size = 0UL;
     ib >> arguments_desc_size;
+    OPENVINO_ASSERT(arguments_desc_size <= MAX_KERNEL_ARGS, "[GPU] arguments_desc_size exceeds maximum allowed value");
     params.arguments.resize(arguments_desc_size);
     for (auto& arg : params.arguments) {
         ib >> make_data(&arg.t, sizeof(cldnn::argument_desc::Types)) >> arg.index;
@@ -621,6 +631,7 @@ void clKernelData::load(cldnn::BinaryInputBuffer& ib) {
 
     typename cldnn::scalars_desc::size_type scalars_desc_size = 0UL;
     ib >> scalars_desc_size;
+    OPENVINO_ASSERT(scalars_desc_size <= MAX_KERNEL_SCALARS, "[GPU] scalars_desc_size exceeds maximum allowed value");
     params.scalars.resize(scalars_desc_size);
     for (auto& scalar : params.scalars) {
         ib >> make_data(&scalar.t, sizeof(cldnn::scalar_desc::Types)) >> make_data(&scalar.v, sizeof(cldnn::scalar_desc::ValueT));
@@ -628,6 +639,7 @@ void clKernelData::load(cldnn::BinaryInputBuffer& ib) {
 
     typename cldnn::local_memory_args_desc::size_type local_memory_args_size = 0UL;
     ib >> local_memory_args_size;
+    OPENVINO_ASSERT(local_memory_args_size <= MAX_KERNEL_LOCAL_MEMORY_ARGS, "[GPU] local_memory_args_size exceeds maximum allowed value");
     params.local_memory_args.resize(local_memory_args_size);
     for (auto& arg : params.local_memory_args) {
         ib >> cldnn::make_data(&arg, sizeof(arg));
@@ -638,6 +650,7 @@ void clKernelData::load(cldnn::BinaryInputBuffer& ib) {
 #ifdef ENABLE_ONEDNN_FOR_GPU
     size_t n_microkernels;
     ib >> n_microkernels;
+    OPENVINO_ASSERT(n_microkernels <= MAX_KERNEL_MICROKERNELS, "[GPU] n_microkernels exceeds maximum allowed value");
     micro_kernels.clear();
     for (size_t i = 0; i < n_microkernels; i++) {
         auto microkernel = std::make_shared<micro::MicroKernelPackage>();
