@@ -594,6 +594,9 @@ bool Constant::evaluate(TensorVector& outputs, const TensorVector& inputs) const
         auto num_elements = shape_size(m_shape);
         auto src_strings = static_cast<const std::string*>(get_data_ptr());
         auto dst_strings = static_cast<std::string*>(outputs[0].data());
+        const size_t actual_elements =
+            std::dynamic_pointer_cast<ov::StringAlignedBuffer>(m_data) ? m_data->size() / sizeof(std::string) : 0;
+        OPENVINO_ASSERT(num_elements <= actual_elements, "String Constant shape/data mismatch");
         std::copy_n(src_strings, num_elements, dst_strings);
     } else {
         std::memcpy(outputs[0].data(), get_data_ptr(), outputs[0].get_byte_size());
