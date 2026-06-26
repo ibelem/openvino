@@ -436,6 +436,9 @@ void Gather::prepareParams() {
         }
     }
 
+    CPU_NODE_ASSERT(axisAndAfterAxisSizeInBytes <= static_cast<uint64_t>(INT32_MAX),
+                    "axisAndAfterAxisSizeInBytes overflows int32");
+
     if (!isIdxShapeStat) {
         const auto& idxDims = idxMemPtr->getStaticDims();
         specIndicesSize = std::accumulate(idxDims.begin() + batchDims, idxDims.end(), 1LU, std::multiplies<>());
