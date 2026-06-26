@@ -20,6 +20,9 @@ TensorExternalData::TensorExternalData(const TensorProto& tensor) {
     for (const auto& entry : tensor.external_data()) {
         if (entry.key() == "location") {
             m_data_location = entry.value();
+            if (entry.value() == ORT_MEM_ADDR) {
+                throw error::invalid_external_data{*this};
+            }
         } else if (entry.key() == "offset") {
             m_offset = std::stoull(entry.value());
         } else if (entry.key() == "length") {
