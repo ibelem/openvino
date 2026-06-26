@@ -1066,6 +1066,12 @@ void ScatterUpdate::scatterNDUpdate(const MemoryPtr& mem_data,
                 // Negative value for indices means counting backwards from the end.
                 idxValue += srcDataDim[i];
             }
+            // Validate each index component is within bounds for its dimension before
+            // accumulating into dstOffset. This prevents signed/unsigned wraparound in the
+            // mixed-type multiplication below and guards against partial-wrap attacks that
+            // could otherwise bypass the post-loop element count check.
+            CPU_NODE_ASSERT(idxValue >= 0 && static_cast<size_t>(idxValue) < srcDataDim[i],
+                            " indices contain values that points to non-existing data tensor element");
             dstOffset += idxValue * srcBlockND[i + 1];
         }
 
