@@ -446,6 +446,15 @@ void Gather::prepareParams() {
         totalWork = beforeBatchSize * betweenBatchAndAxisSize * specIndicesSize * afterAxisSize;
     }
 
+    if (compressed && scale_group_size != 0U) {
+        CPU_NODE_ASSERT(afterAxisSize % scale_group_size == 0,
+                        "has afterAxisSize (",
+                        afterAxisSize,
+                        ") not divisible by scale_group_size (",
+                        scale_group_size,
+                        ") in compressed mode.");
+    }
+
 #if defined(OPENVINO_ARCH_X86_64)
     const auto& selectedPD = getSelectedPrimitiveDescriptor();
     if (jitKernel && jitKernel->isSupportedConfiguration(afterAxisSize)) {
@@ -732,7 +741,7 @@ void Gather::execCompressed4Bit() {
                         for (; p < srcIdx + afterAxisSize; p += scale_group_size) {
                             const auto& cur_scale = scale[p / scale_group_size];
                             const auto& cur_zp = cond2 ? zp[0] : zp[p / zp_group_size];
-                            for (size_t g = p; g < p + scale_group_size; g++) {
+                            for (size_t g = p; g < std::min(p + scale_group_size, srcIdx + afterAxisSize); g++) {
                                 auto val = srcData[g >> 1];
                                 pdst[dst_idx] = static_cast<OUT_TYPE>((get4Bit(val, g % 2) - cur_zp) * cur_scale);
                                 dst_idx++;
