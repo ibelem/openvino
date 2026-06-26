@@ -1110,6 +1110,9 @@ void ScatterUpdate::scatterNDUpdate(const MemoryPtr& mem_data,
                 // Negative value for indices means counting backwards from the end.
                 idxValue += srcDataDim[i];
             }
+            CPU_NODE_ASSERT(idxValue >= 0 && static_cast<size_t>(idxValue) < srcDataDim[i],
+                            " indices value out of range for dimension ",
+                            i);
             dstOffset += idxValue * srcBlockND[i + 1];
         }
 
