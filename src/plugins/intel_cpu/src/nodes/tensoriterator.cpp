@@ -123,6 +123,9 @@ public:
         auto full_dims = full_blob->getShape().getStaticDims();
         auto part_dims = part_blob->getShape().getStaticDims();
 
+        OPENVINO_ASSERT(axis >= 0 && static_cast<size_t>(axis) < full_dims.size(),
+                        "TensorIterator: axis out of range for tensor rank");
+
         auto abs_stride = std::abs(stride);
         auto sign_of_stride = stride < 0 ? -1 : 1;
 
@@ -133,6 +136,8 @@ public:
 
         // make chunk view
         auto chunk_desc = full_blob->getDescWithType<DnnlMemoryDesc>()->getDnnlDesc();
+        OPENVINO_ASSERT(static_cast<size_t>(axis) < DNNL_MAX_NDIMS,
+                        "TensorIterator: axis out of range for tensor rank");
         chunk_desc.get()->dims[axis] = abs_stride;
         chunk_desc.get()->padded_dims[axis] = abs_stride;  // TODO: asamption that plain tensor
 
@@ -515,6 +520,13 @@ void TensorIterator::createPrimitive() {
             auto output_desc = ov::as_type_ptr<const ov::op::util::SubGraphOp::ConcatOutputDescription>(desc);
             CPU_NODE_ASSERT(output_desc, "Incorrect type of the output description");
 
+            const auto out_rank = ngraphOp->get_output_partial_shape(output_desc->m_output_index).rank();
+            CPU_NODE_ASSERT(out_rank.is_dynamic() ||
+                                (static_cast<int64_t>(output_desc->m_axis) >= 0 &&
+                                 static_cast<int64_t>(output_desc->m_axis) < out_rank.get_length()),
+                            "has invalid output concat axis: ",
+                            output_desc->m_axis);
+
             outputPortMap.emplace_back(PortMap{static_cast<int>(output_desc->m_output_index),
                                                static_cast<int>(body_output_idx),
                                                static_cast<int>(output_desc->m_axis),
@@ -543,6 +555,13 @@ void TensorIterator::createPrimitive() {
         auto body_input_index = desc->m_body_parameter_index;
 
         if (auto slice_desc = ov::as_type_ptr<const ov::op::util::SubGraphOp::SliceInputDescription>(desc)) {
+            const auto in_rank = ngraphOp->get_input_partial_shape(slice_desc->m_input_index).rank();
+            CPU_NODE_ASSERT(in_rank.is_dynamic() ||
+                                (static_cast<int64_t>(slice_desc->m_axis) >= 0 &&
+                                 static_cast<int64_t>(slice_desc->m_axis) < in_rank.get_length()),
+                            "has invalid input slice axis: ",
+                            slice_desc->m_axis);
+
             inputPortMap.emplace_back(PortMap{static_cast<int>(slice_desc->m_input_index),
                                               static_cast<int>(body_input_index),
                                               static_cast<int>(slice_desc->m_axis),
