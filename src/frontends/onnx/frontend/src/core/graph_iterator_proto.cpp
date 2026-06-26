@@ -301,17 +301,19 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
     }
     const auto full_path = ov::util::sanitize_path(graph_iterator->get_model_dir(), ov::util::make_path(ext_location));
     const int64_t file_size = ov::util::file_size(full_path);
-    if ((file_size <= 0 && ext_data_length > 0) || ext_data_length > static_cast<uint64_t>(file_size) ||
-        ext_data_offset > static_cast<uint64_t>(file_size) - ext_data_length) {
-        // not_existed_file.data, offset: 4096, data_length: 16)
-        std::stringstream ss;
-        ss << "Invalid usage of method for externally stored data in file (" << ext_location;
-        ss << ", offset: " << ext_data_offset << ", data_length: " << ext_data_length << ")";
-        throw std::runtime_error(ss.str());
+    if (file_size < 0) {
+        throw std::runtime_error("Cannot determine size of external data file: " + ext_location);
     }
-    const size_t resolved_data_length = ext_data_length > 0
+    const uint64_t fsize = static_cast<uint64_t>(file_size);
+    if (ext_data_offset > fsize) {
+        throw std::runtime_error("ext_data_offset exceeds file size");
+    }
+    if (ext_data_length > 0 && ext_data_length > fsize - ext_data_offset) {
+        throw std::runtime_error("ext_data_length exceeds available file bytes");
+    }
+    const size_t resolved_data_length = (ext_data_length > 0)
                                             ? static_cast<size_t>(ext_data_length)
-                                            : static_cast<size_t>(file_size) - static_cast<size_t>(ext_data_offset);
+                                            : static_cast<size_t>(fsize - ext_data_offset);
     auto memory_mode = graph_iterator->get_memory_management_mode();
     if (memory_mode == External_MMAP) {
         auto cache = graph_iterator->get_mmap_cache();
