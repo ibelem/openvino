@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <oneapi/dnnl/dnnl_common.hpp>
@@ -161,6 +162,8 @@ void Gather::initSupportedPrimitiveDescriptors() {
 
     const auto& dataDims = getInputShapeAtPort(GATHER_DATA).getDims();
     if (isAxisInputConst && isDataShapeStat) {
+        CPU_NODE_ASSERT(dataDims[axis] <= static_cast<size_t>(std::numeric_limits<int32_t>::max()),
+                        "axisDim exceeds int32 range");
         axisDim = dataDims[axis];
         beforeAxisSize = std::accumulate(dataDims.begin(), dataDims.begin() + axis, 1LU, std::multiplies<>());
         betweenBatchAndAxisSize =
@@ -415,6 +418,8 @@ void Gather::prepareParams() {
 
     if (!isDataShapeStat || !isAxisInputConst) {
         const auto& dataDims = dataMemPtr->getStaticDims();
+        CPU_NODE_ASSERT(dataDims[axis] <= static_cast<size_t>(std::numeric_limits<int32_t>::max()),
+                        "axisDim exceeds int32 range");
         axisDim = dataDims[axis];
         beforeBatchSize = std::accumulate(dataDims.begin(), dataDims.begin() + batchDims, 1LU, std::multiplies<>());
         betweenBatchAndAxisSize =
