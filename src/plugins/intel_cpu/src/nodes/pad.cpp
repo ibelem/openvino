@@ -405,10 +405,13 @@ void Pad::PadExecutor::innerParamsInitialization() {
     params.innerBeginShift = params.innerBeginPadCount * params.shift;
     params.innerEndShift = params.innerEndPadCount * params.shift;
     params.innerSrcShift = std::max(-1 * params.attrs.padsBegin[params.nDimsForWork], 0) * params.shift;
-    params.innerCopySize =
-        (params.srcDims[params.nDimsForWork] + std::min(params.attrs.padsBegin[params.nDimsForWork], 0) +
-         std::min(params.attrs.padsEnd[params.nDimsForWork], 0)) *
-        params.shift;
+    int64_t copyLen = static_cast<int64_t>(params.srcDims[params.nDimsForWork]) +
+                      std::min(params.attrs.padsBegin[params.nDimsForWork], 0) +
+                      std::min(params.attrs.padsEnd[params.nDimsForWork], 0);
+    if (copyLen < 0) {
+        OPENVINO_THROW("Pad: negative innerCopySize for dimension ", params.nDimsForWork);
+    }
+    params.innerCopySize = static_cast<size_t>(copyLen) * params.shift;
 }
 
 void Pad::PadExecutor::exec(const MemoryPtr& srcMemPtr, const MemoryPtr& dstMemPtr) {
