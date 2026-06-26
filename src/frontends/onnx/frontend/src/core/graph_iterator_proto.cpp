@@ -618,6 +618,11 @@ void GraphIteratorProto::reset() {
             m_tensors.try_emplace(initializer.name(), std::make_shared<DecoderProtoTensor>(&initializer, this, -1, -1));
         }
     }
+    // Guard against pathological models that reference an excessive number of
+    // outer-scope tensors, and avoid quadratic-cost re-insertion of the same
+    // parent-scope decoder by tracking what has already been injected on top.
+    constexpr size_t MAX_PARENT_TENSOR_INJECTIONS = static_cast<size_t>(1) << 20;
+    std::unordered_set<std::shared_ptr<DecoderProtoTensor>> injected_parent_tensors;
     size_t top_index = 0;
     for (const auto& node : graph.node()) {
         std::vector<const ov::frontend::onnx::TensorMetaInfo*> input_tensors{};
@@ -629,9 +634,14 @@ void GraphIteratorProto::reset() {
             auto decoder_proto_tensor = this->get_tensor(name, &tensor_owner);
             input_tensors.push_back(&decoder_proto_tensor->get_tensor_info());
             if (tensor_owner != this) {
-                // Need to insert parent's decoders on top of decoders
-                m_decoders.insert(m_decoders.begin() + top_index, decoder_proto_tensor);
-                ++top_index;
+                // Need to insert parent's decoders on top of decoders, but only once
+                // per distinct parent-scope tensor to avoid quadratic re-insertion.
+                if (injected_parent_tensors.insert(decoder_proto_tensor).second) {
+                    FRONT_END_GENERAL_CHECK(top_index < MAX_PARENT_TENSOR_INJECTIONS,
+                                            "Too many parent-scope tensor references in subgraph");
+                    m_decoders.insert(m_decoders.begin() + top_index, decoder_proto_tensor);
+                    ++top_index;
+                }
             }
         }
         for (const auto& name : node.output()) {
