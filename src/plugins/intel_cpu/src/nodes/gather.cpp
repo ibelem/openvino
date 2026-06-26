@@ -202,8 +202,9 @@ void Gather::initSupportedPrimitiveDescriptors() {
         if (none_of(outPrecision, ov::element::f32, ov::element::f16, ov::element::bf16)) {
             outPrecision = ov::element::f32;
         }
-        scale_group_size =
-            getInputShapeAtPort(GATHER_DATA).getElementsCount() / getInputShapeAtPort(GATHER_SCALE).getElementsCount();
+        const size_t scale_elem_count = getInputShapeAtPort(GATHER_SCALE).getElementsCount();
+        CPU_NODE_ASSERT(scale_elem_count != 0, "GATHER_SCALE tensor must have at least one element");
+        scale_group_size = getInputShapeAtPort(GATHER_DATA).getElementsCount() / scale_elem_count;
         have_scalar_scale = getInputShapeAtPort(GATHER_SCALE).getElementsCount() == 1U;
 
         if (getOriginalInputsNumber() == 5U) {
@@ -214,8 +215,9 @@ void Gather::initSupportedPrimitiveDescriptors() {
 
             have_zp = true;
             have_scalar_zp = getInputShapeAtPort(GATHER_ZP).getElementsCount() == 1U;
-            zp_group_size =
-                getInputShapeAtPort(GATHER_DATA).getElementsCount() / getInputShapeAtPort(GATHER_ZP).getElementsCount();
+            const size_t zp_elem_count = getInputShapeAtPort(GATHER_ZP).getElementsCount();
+            CPU_NODE_ASSERT(zp_elem_count != 0, "GATHER_ZP tensor must have at least one element");
+            zp_group_size = getInputShapeAtPort(GATHER_DATA).getElementsCount() / zp_elem_count;
             addSupportedPrimDesc({{LayoutType::ncsp, dataPrecision},
                                   {LayoutType::ncsp, ov::element::i32},
                                   {LayoutType::ncsp, ov::element::i32},
