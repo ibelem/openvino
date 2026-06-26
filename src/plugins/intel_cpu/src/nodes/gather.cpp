@@ -817,7 +817,7 @@ void Gather::execCompressed8Bit() {
                         for (; p < srcIdx + afterAxisSize; p += scale_group_size) {
                             const auto& cur_scale = scale[p / scale_group_size];
                             const auto& cur_zp = cond2 ? zp[0] : zp[p / zp_group_size];
-                            for (size_t g = p; g < p + scale_group_size; g++) {
+                            for (size_t g = p; g < std::min(p + scale_group_size, srcIdx + afterAxisSize); g++) {
                                 pdst[dst_idx] =
                                     static_cast<OUT_TYPE>((static_cast<float>(srcData[g]) - cur_zp) * cur_scale);
                                 dst_idx++;
