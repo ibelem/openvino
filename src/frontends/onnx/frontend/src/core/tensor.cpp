@@ -145,7 +145,17 @@ std::vector<ov::bfloat16> Tensor::get_data() const {
         return detail::__get_raw_data<ov::bfloat16>(m_tensor_proto->raw_data(), m_tensor_proto->data_type());
     }
     if (m_tensor_proto->data_type() == TensorProto_DataType::TensorProto_DataType_BFLOAT16) {
-        return detail::__get_data<ov::bfloat16>(m_tensor_proto->int32_data());
+        using std::begin;
+        using std::end;
+
+        const auto& int32_data = m_tensor_proto->int32_data();
+        std::vector<ov::bfloat16> bf16_data;
+        bf16_data.reserve(int32_data.size());
+        std::transform(begin(int32_data), end(int32_data), std::back_inserter(bf16_data), [](int32_t elem) {
+            return ov::bfloat16::from_bits(static_cast<uint16_t>(elem));
+        });
+
+        return detail::__get_data<ov::bfloat16>(bf16_data);
     }
     ONNX_INVALID_DATA_TYPE(m_tensor_proto->data_type(), "INT32, raw data");
 }
