@@ -275,7 +275,11 @@ void Pad::PadExecutor::paramsInitialization(const PadAttrs& attrs,
             const auto* ptr = srcMemory[type]->getDataAs<const int32_t>();
             parameter.resize(size);
             for (size_t i = 0; i < size; i++) {
-                parameter[i] = static_cast<int>(ptr[i]);
+                int val = static_cast<int>(ptr[i]);
+                if (val < 0 && static_cast<size_t>(-val) > srcDims[i]) {
+                    OPENVINO_THROW("Pad: pads value is out of valid range");
+                }
+                parameter[i] = val;
             }
         };
     // if pad begin/end/value dynamic
