@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <oneapi/dnnl/dnnl_common.hpp>
@@ -161,6 +162,9 @@ void Gather::initSupportedPrimitiveDescriptors() {
 
     const auto& dataDims = getInputShapeAtPort(GATHER_DATA).getDims();
     if (isAxisInputConst && isDataShapeStat) {
+        if (dataDims[axis] > static_cast<size_t>(std::numeric_limits<int64_t>::max())) {
+            OPENVINO_THROW("Gather: axis dimension too large");
+        }
         axisDim = dataDims[axis];
         beforeAxisSize = std::accumulate(dataDims.begin(), dataDims.begin() + axis, 1LU, std::multiplies<>());
         betweenBatchAndAxisSize =
@@ -169,9 +173,21 @@ void Gather::initSupportedPrimitiveDescriptors() {
 
         afterAxisSizeInBytes = afterAxisSize * dataTypeSize;
         afterAxisSizeInBytesOut = afterAxisSize * outTypeSize;
+        if (afterAxisSize != 0 && static_cast<size_t>(axisDim) > SIZE_MAX / afterAxisSize) {
+            OPENVINO_THROW("Gather: axisAndAfterAxisSize overflow");
+        }
         axisAndAfterAxisSize = axisDim * afterAxisSize;
+        if (afterAxisSizeInBytes != 0 && static_cast<size_t>(axisDim) > SIZE_MAX / afterAxisSizeInBytes) {
+            OPENVINO_THROW("Gather: axisAndAfterAxisSizeInBytes overflow");
+        }
         axisAndAfterAxisSizeInBytes = axisDim * afterAxisSizeInBytes;
+        if (axisAndAfterAxisSize != 0 && betweenBatchAndAxisSize > SIZE_MAX / axisAndAfterAxisSize) {
+            OPENVINO_THROW("Gather: srcAfterBatchSize overflow");
+        }
         srcAfterBatchSize = betweenBatchAndAxisSize * axisAndAfterAxisSize;
+        if (axisAndAfterAxisSizeInBytes != 0 && betweenBatchAndAxisSize > SIZE_MAX / axisAndAfterAxisSizeInBytes) {
+            OPENVINO_THROW("Gather: srcAfterBatchSizeInBytes overflow");
+        }
         srcAfterBatchSizeInBytes = betweenBatchAndAxisSize * axisAndAfterAxisSizeInBytes;
     }
     if (isDataShapeStat) {
@@ -415,6 +431,9 @@ void Gather::prepareParams() {
 
     if (!isDataShapeStat || !isAxisInputConst) {
         const auto& dataDims = dataMemPtr->getStaticDims();
+        if (dataDims[axis] > static_cast<size_t>(std::numeric_limits<int64_t>::max())) {
+            OPENVINO_THROW("Gather: axis dimension too large");
+        }
         axisDim = dataDims[axis];
         beforeBatchSize = std::accumulate(dataDims.begin(), dataDims.begin() + batchDims, 1LU, std::multiplies<>());
         betweenBatchAndAxisSize =
@@ -423,9 +442,21 @@ void Gather::prepareParams() {
 
         afterAxisSizeInBytes = afterAxisSize * dataTypeSize;
         afterAxisSizeInBytesOut = afterAxisSize * outTypeSize;
+        if (afterAxisSize != 0 && static_cast<size_t>(axisDim) > SIZE_MAX / afterAxisSize) {
+            OPENVINO_THROW("Gather: axisAndAfterAxisSize overflow");
+        }
         axisAndAfterAxisSize = axisDim * afterAxisSize;
+        if (afterAxisSizeInBytes != 0 && static_cast<size_t>(axisDim) > SIZE_MAX / afterAxisSizeInBytes) {
+            OPENVINO_THROW("Gather: axisAndAfterAxisSizeInBytes overflow");
+        }
         axisAndAfterAxisSizeInBytes = axisDim * afterAxisSizeInBytes;
+        if (axisAndAfterAxisSize != 0 && betweenBatchAndAxisSize > SIZE_MAX / axisAndAfterAxisSize) {
+            OPENVINO_THROW("Gather: srcAfterBatchSize overflow");
+        }
         srcAfterBatchSize = betweenBatchAndAxisSize * axisAndAfterAxisSize;
+        if (axisAndAfterAxisSizeInBytes != 0 && betweenBatchAndAxisSize > SIZE_MAX / axisAndAfterAxisSizeInBytes) {
+            OPENVINO_THROW("Gather: srcAfterBatchSizeInBytes overflow");
+        }
         srcAfterBatchSizeInBytes = betweenBatchAndAxisSize * axisAndAfterAxisSizeInBytes;
 
         if (isIdxShapeStat) {
