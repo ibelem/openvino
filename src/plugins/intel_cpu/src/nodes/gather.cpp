@@ -732,7 +732,7 @@ void Gather::execCompressed4Bit() {
                         for (; p < srcIdx + afterAxisSize; p += scale_group_size) {
                             const auto& cur_scale = scale[p / scale_group_size];
                             const auto& cur_zp = cond2 ? zp[0] : zp[p / zp_group_size];
-                            for (size_t g = p; g < p + scale_group_size; g++) {
+                            for (size_t g = p; g < p + scale_group_size && g < srcIdx + afterAxisSize; g++) {
                                 auto val = srcData[g >> 1];
                                 pdst[dst_idx] = static_cast<OUT_TYPE>((get4Bit(val, g % 2) - cur_zp) * cur_scale);
                                 dst_idx++;
