@@ -546,6 +546,14 @@ bool Constant::visit_attributes(AttributeVisitor& visitor) {
 
     const auto need_to_reallocate = (m_shape != prev_shape) || (prev_type != m_element_type);
     const auto is_string_constant = (m_element_type == element::string);
+    if (!m_alloc_buffer_on_visit_attributes && need_to_reallocate) {
+        const auto required = ov::util::get_memory_size_safe(m_element_type, m_shape);
+        OPENVINO_ASSERT(required && m_data && m_data->size() >= *required,
+                        "Deserialized shape/type requires ",
+                        required.value_or(0),
+                        " bytes but existing buffer holds ",
+                        (m_data ? m_data->size() : 0));
+    }
     if (m_alloc_buffer_on_visit_attributes && need_to_reallocate) {
         // string objects initialization is required, others filling in a fresh constant
         allocate_buffer(is_string_constant);
