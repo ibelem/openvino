@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <oneapi/dnnl/dnnl_common.hpp>
@@ -170,8 +171,16 @@ void Gather::initSupportedPrimitiveDescriptors() {
         afterAxisSizeInBytes = afterAxisSize * dataTypeSize;
         afterAxisSizeInBytesOut = afterAxisSize * outTypeSize;
         axisAndAfterAxisSize = axisDim * afterAxisSize;
+        if (axisDim > 0 && afterAxisSizeInBytes > 0 &&
+            static_cast<uint64_t>(axisDim) > std::numeric_limits<uint64_t>::max() / afterAxisSizeInBytes) {
+            CPU_NODE_THROW("shape product overflow");
+        }
         axisAndAfterAxisSizeInBytes = axisDim * afterAxisSizeInBytes;
         srcAfterBatchSize = betweenBatchAndAxisSize * axisAndAfterAxisSize;
+        if (betweenBatchAndAxisSize > 0 && axisAndAfterAxisSizeInBytes > 0 &&
+            betweenBatchAndAxisSize > std::numeric_limits<uint64_t>::max() / axisAndAfterAxisSizeInBytes) {
+            CPU_NODE_THROW("shape product overflow");
+        }
         srcAfterBatchSizeInBytes = betweenBatchAndAxisSize * axisAndAfterAxisSizeInBytes;
     }
     if (isDataShapeStat) {
@@ -424,8 +433,16 @@ void Gather::prepareParams() {
         afterAxisSizeInBytes = afterAxisSize * dataTypeSize;
         afterAxisSizeInBytesOut = afterAxisSize * outTypeSize;
         axisAndAfterAxisSize = axisDim * afterAxisSize;
+        if (axisDim > 0 && afterAxisSizeInBytes > 0 &&
+            static_cast<uint64_t>(axisDim) > std::numeric_limits<uint64_t>::max() / afterAxisSizeInBytes) {
+            CPU_NODE_THROW("shape product overflow");
+        }
         axisAndAfterAxisSizeInBytes = axisDim * afterAxisSizeInBytes;
         srcAfterBatchSize = betweenBatchAndAxisSize * axisAndAfterAxisSize;
+        if (betweenBatchAndAxisSize > 0 && axisAndAfterAxisSizeInBytes > 0 &&
+            betweenBatchAndAxisSize > std::numeric_limits<uint64_t>::max() / axisAndAfterAxisSizeInBytes) {
+            CPU_NODE_THROW("shape product overflow");
+        }
         srcAfterBatchSizeInBytes = betweenBatchAndAxisSize * axisAndAfterAxisSizeInBytes;
 
         if (isIdxShapeStat) {
