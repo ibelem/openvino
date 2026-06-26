@@ -1372,8 +1372,9 @@ PortDescBasePtr Node::getConsistentInputDesc(const NodeConfig& config, size_t id
                     getParentEdgeAt(idx)->getParent()->getName());
 
     int num = getParentEdgeAt(idx)->getInputNum();
-    if (num >= 0) {
-        auto parentConf = parentSelectedPD->getConfig().outConfs[num];
+    const auto& parentOutConfs = parentSelectedPD->getConfig().outConfs;
+    if (num >= 0 && static_cast<size_t>(num) < parentOutConfs.size()) {
+        auto parentConf = parentOutConfs[num];
         const auto desc = parentConf.getMemDesc()->cloneWithNewPrecision(inConf.getMemDesc()->getPrecision());
         parentConf.setMemDesc(desc);
 
