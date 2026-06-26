@@ -292,7 +292,15 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
         }
     }
     if (ext_location == detail::ORT_MEM_ADDR) {
-        // Specific ONNX Runtime Case when it passes a model with self-managed data
+        // Specific ONNX Runtime Case when it passes a model with self-managed data.
+        // The "offset" field carries a raw in-process pointer supplied by ORT. When the
+        // model bytes cross the EP trust boundary (e.g. loaded from a file or untrusted
+        // bytes) this pointer must not be dereferenced blindly. Apply a runtime sanity
+        // guard to reject obviously malicious values (null/low addresses, zero length,
+        // or a misaligned pointer) before storing it as raw tensor data.
+        OPENVINO_ASSERT(ext_data_offset != 0 && ext_data_offset > 0x10000ULL && ext_data_length > 0 &&
+                            (ext_data_offset % alignof(std::max_align_t)) == 0,
+                        "ORT_MEM_ADDR: suspicious pointer or zero length");
         tensor_meta_info.m_is_raw = true;
         tensor_meta_info.m_tensor_data = reinterpret_cast<uint8_t*>(ext_data_offset);
         tensor_meta_info.m_tensor_data_size = ext_data_length;
