@@ -979,12 +979,16 @@ void Gather::exec1DCase() {
         auto ii = pidx[i];
         if (ii < 0) {
             if (reverseIndexing) {
-                ii += axisDim;
+                ii += static_cast<int32_t>(axisDim);
             } else {
-                ii = axisDim;
+                ii = static_cast<int32_t>(axisDim);
             }
         }
-        pdst[i] = psrc[ii];
+        if (ii >= 0 && static_cast<size_t>(ii) < axisDim) {
+            pdst[i] = psrc[ii];
+        } else {
+            pdst[i] = 0;
+        }
     }
 }
 
