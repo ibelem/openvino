@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <cstring>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <numeric>
 #include <oneapi/dnnl/dnnl_common.hpp>
@@ -424,8 +425,16 @@ void Gather::prepareParams() {
         afterAxisSizeInBytes = afterAxisSize * dataTypeSize;
         afterAxisSizeInBytesOut = afterAxisSize * outTypeSize;
         axisAndAfterAxisSize = axisDim * afterAxisSize;
+        OPENVINO_ASSERT(afterAxisSizeInBytes == 0 ||
+                            static_cast<uint64_t>(axisDim) <=
+                                std::numeric_limits<uint64_t>::max() / afterAxisSizeInBytes,
+                        "Gather: axisAndAfterAxisSizeInBytes overflow");
         axisAndAfterAxisSizeInBytes = axisDim * afterAxisSizeInBytes;
         srcAfterBatchSize = betweenBatchAndAxisSize * axisAndAfterAxisSize;
+        OPENVINO_ASSERT(axisAndAfterAxisSizeInBytes == 0 ||
+                            betweenBatchAndAxisSize <=
+                                std::numeric_limits<uint64_t>::max() / axisAndAfterAxisSizeInBytes,
+                        "Gather: srcAfterBatchSizeInBytes overflow");
         srcAfterBatchSizeInBytes = betweenBatchAndAxisSize * axisAndAfterAxisSizeInBytes;
 
         if (isIdxShapeStat) {
