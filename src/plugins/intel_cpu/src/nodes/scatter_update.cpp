@@ -1110,6 +1110,9 @@ void ScatterUpdate::scatterNDUpdate(const MemoryPtr& mem_data,
                 // Negative value for indices means counting backwards from the end.
                 idxValue += srcDataDim[i];
             }
+            if (idxValue < 0 || static_cast<size_t>(idxValue) >= srcDataDim[i]) {
+                CPU_NODE_THROW(" indices contain values that points to non-existing data tensor element");
+            }
             dstOffset += idxValue * srcBlockND[i + 1];
         }
 
