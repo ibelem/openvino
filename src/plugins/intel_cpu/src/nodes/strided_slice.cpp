@@ -216,7 +216,16 @@ static void addHiddenDims(StridedSlice::StridedSliceAttributes& attrs,
         // all masks and input parameters are for planar layouts. So if we use blocked or per channel layout and
         // there is ellipsis should to add default values in hidden dimensions to know real order of mask or parameter
         // values
+        if (static_cast<size_t>(attrs.ellipsisPos1) >= attrs.begin.size()) {
+            OPENVINO_THROW("StridedSlice: ellipsisPos1 (",
+                           attrs.ellipsisPos1,
+                           ") is out of range for begin.size()=",
+                           attrs.begin.size());
+        }
         size_t afterDims = attrs.begin.size() - attrs.ellipsisPos1 - 1;
+        if (afterDims >= inputRank) {
+            OPENVINO_THROW("StridedSlice: afterDims underflow");
+        }
         size_t ellipsisPos2 = inputRank - afterDims - 1;
 
         auto addHiddenDims = [&](std::vector<int>& data, const int bit = 0) {
