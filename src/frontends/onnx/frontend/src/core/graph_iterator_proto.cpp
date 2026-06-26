@@ -292,7 +292,15 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
         }
     }
     if (ext_location == detail::ORT_MEM_ADDR) {
-        // Specific ONNX Runtime Case when it passes a model with self-managed data
+        // Specific ONNX Runtime Case when it passes a model with self-managed data.
+        // This sentinel allows an attacker-controlled "offset" to be reinterpreted as a
+        // raw pointer, so it must only be honored for trusted in-process ORT callers.
+        if (!graph_iterator->is_ort_mem_addr_allowed()) {
+            throw std::runtime_error("ORT_MEM_ADDR sentinel is not permitted in file-based model loading");
+        }
+        if (!graph_iterator->is_ort_mem_addr_offset_allowed(ext_data_offset, ext_data_length)) {
+            throw std::runtime_error("ORT_MEM_ADDR offset is outside of the permitted range");
+        }
         tensor_meta_info.m_is_raw = true;
         tensor_meta_info.m_tensor_data = reinterpret_cast<uint8_t*>(ext_data_offset);
         tensor_meta_info.m_tensor_data_size = ext_data_length;
@@ -499,10 +507,14 @@ GraphIteratorProto::GraphIteratorProto(GraphIteratorProto* parent, const GraphPr
     m_stream_cache = parent->m_stream_cache;
     m_data_holder = parent->m_data_holder;
     m_model = parent->m_model;
+    m_allow_ort_mem_addr = parent->m_allow_ort_mem_addr;
 }
 
 void GraphIteratorProto::initialize(const std::filesystem::path& path) {
     m_model_dir = ov::util::get_directory(path);
+    // File-based loading is never a trusted in-process ORT caller, so the
+    // ORT_MEM_ADDR self-managed memory sentinel must not be honored here.
+    m_allow_ort_mem_addr = false;
     try {
         std::ifstream model_file(path, std::ios::binary | std::ios::in);
         FRONT_END_GENERAL_CHECK(model_file && model_file.is_open(), "Could not open the file: ", path);
