@@ -292,6 +292,9 @@ bool extract_tensor_external_data(ov::frontend::onnx::TensorMetaInfo& tensor_met
         }
     }
     if (ext_location == detail::ORT_MEM_ADDR) {
+        if (!graph_iterator->is_ort_inprocess()) {
+            throw std::runtime_error("ORT_MEM_ADDR sentinel not allowed for file-loaded models");
+        }
         // Specific ONNX Runtime Case when it passes a model with self-managed data
         tensor_meta_info.m_is_raw = true;
         tensor_meta_info.m_tensor_data = reinterpret_cast<uint8_t*>(ext_data_offset);
@@ -499,6 +502,7 @@ GraphIteratorProto::GraphIteratorProto(GraphIteratorProto* parent, const GraphPr
     m_stream_cache = parent->m_stream_cache;
     m_data_holder = parent->m_data_holder;
     m_model = parent->m_model;
+    m_is_ort_inprocess = parent->m_is_ort_inprocess;
 }
 
 void GraphIteratorProto::initialize(const std::filesystem::path& path) {
@@ -530,6 +534,7 @@ void GraphIteratorProto::initialize(const std::filesystem::path& path) {
 
 void GraphIteratorProto::initialize(std::shared_ptr<ModelProto> model) {
     m_model = std::move(model);
+    m_is_ort_inprocess = true;
     if (m_model && m_model->has_graph()) {
         fixup_legacy_nodes(*m_model);
         topological_sort_graph(m_model->mutable_graph());
