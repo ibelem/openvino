@@ -19,6 +19,7 @@
 #include "openvino/core/type/float16.hpp"
 #include "openvino/core/type/nf4.hpp"
 #include "openvino/core/weight_sharing_util.hpp"
+#include "openvino/op/convert.hpp"
 #include "openvino/reference/convert.hpp"
 #include "openvino/reference/utils/type_util.hpp"
 #include "openvino/runtime/shared_buffer.hpp"
@@ -608,16 +609,36 @@ bool Constant::has_evaluate() const {
 }
 
 bool Constant::evaluate_lower(TensorVector& outputs) const {
-    if (!outputs.empty() && outputs[0].get_element_type() != m_element_type)
-        return evaluate(outputs, {});  // for TypeRelaxed<Constant>
+    if (!outputs.empty() && outputs[0].get_element_type() != m_element_type) {
+        // for TypeRelaxed<Constant>: do not forward the type-mismatched output tensor into
+        // evaluate() (which would memcpy using the wider output byte size and over-read the
+        // source). Instead evaluate into a correctly-typed temporary and convert it into the
+        // differently-typed output.
+        TensorVector tmp{Tensor{m_element_type, m_shape}};
+        if (!evaluate(tmp, {})) {
+            return false;
+        }
+        outputs[0].set_shape(m_shape);
+        return Convert().evaluate(outputs, tmp);
+    }
     outputs.resize(1);
     outputs[0] = get_tensor_view();
     return get_data_ptr() != nullptr;
 }
 
 bool Constant::evaluate_upper(TensorVector& outputs) const {
-    if (!outputs.empty() && outputs[0].get_element_type() != m_element_type)
-        return evaluate(outputs, {});  // for TypeRelaxed<Constant>
+    if (!outputs.empty() && outputs[0].get_element_type() != m_element_type) {
+        // for TypeRelaxed<Constant>: do not forward the type-mismatched output tensor into
+        // evaluate() (which would memcpy using the wider output byte size and over-read the
+        // source). Instead evaluate into a correctly-typed temporary and convert it into the
+        // differently-typed output.
+        TensorVector tmp{Tensor{m_element_type, m_shape}};
+        if (!evaluate(tmp, {})) {
+            return false;
+        }
+        outputs[0].set_shape(m_shape);
+        return Convert().evaluate(outputs, tmp);
+    }
     outputs.resize(1);
     outputs[0] = get_tensor_view();
     return get_data_ptr() != nullptr;
