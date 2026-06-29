@@ -373,6 +373,9 @@ private:
             return ext_data.size() / get_onnx_data_size(m_tensor_proto->data_type());
         }
         if (m_tensor_proto->has_raw_data()) {
+            if (m_tensor_proto->data_type() == TensorProto_DataType::TensorProto_DataType_UNDEFINED) {
+                FRONT_END_THROW("data_type UNDEFINED is not a valid tensor element type");
+            }
             return m_tensor_proto->raw_data().size() / get_onnx_data_size(m_tensor_proto->data_type());
         }
         switch (m_tensor_proto->data_type()) {
