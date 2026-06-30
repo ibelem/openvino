@@ -391,7 +391,9 @@ void Pad::PadExecutor::workPartition() {
 
     params.srcODims.clear();
     for (size_t i = 0; i < params.srcDims.size(); ++i) {
-        params.srcODims.push_back(params.attrs.padsBegin[i] + params.srcDims[i]);
+        int64_t val = static_cast<int64_t>(params.attrs.padsBegin[i]) + static_cast<int64_t>(params.srcDims[i]);
+        OPENVINO_ASSERT(val >= 0, "Pad: negative padsBegin exceeds srcDim");
+        params.srcODims.push_back(static_cast<size_t>(val));
     }
 
     params.srcDimsForReflectOrSymmetric.clear();
