@@ -231,6 +231,9 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
         std::string xmlInOutString;
         xmlInOutString.resize(hdr.custom_data_size);
         model_stream.read(const_cast<char*>(xmlInOutString.c_str()), hdr.custom_data_size);
+        OPENVINO_ASSERT(model_stream.good() &&
+                            model_stream.gcount() == static_cast<std::streamsize>(hdr.custom_data_size),
+                        "[CPU] Short read on custom data");
         auto res = xmlInOutDoc.load_string(xmlInOutString.c_str());
         OPENVINO_ASSERT(res.status == pugi::status_ok,
                         "NetworkNotRead: The inputs and outputs information is invalid.");
@@ -241,6 +244,9 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
     model_stream.seekg(hdr.consts_offset + hdr_pos);
     if (hdr.consts_size) {
         model_stream.read(static_cast<char*>(data_blob->data(ov::element::u8)), hdr.consts_size);
+        OPENVINO_ASSERT(model_stream.good() &&
+                            model_stream.gcount() == static_cast<std::streamsize>(hdr.consts_size),
+                        "[CPU] Short read on consts data");
     }
 
     // read XML content
@@ -248,6 +254,9 @@ void ModelDeserializer::process_model(std::shared_ptr<ov::Model>& model,
     model_stream.seekg(hdr.model_offset + hdr_pos);
     xml_string->resize(hdr.model_size);
     model_stream.read(const_cast<char*>(xml_string->data()), hdr.model_size);
+    OPENVINO_ASSERT(model_stream.good() &&
+                        model_stream.gcount() == static_cast<std::streamsize>(hdr.model_size),
+                    "[CPU] Short read on XML data");
     if (m_cache_decrypt) {
         if (m_decript_from_string) {
             *xml_string = m_cache_decrypt.m_decrypt_str(*xml_string);
