@@ -372,6 +372,9 @@ private:
             const auto ext_data = detail::TensorExternalData(*m_tensor_proto);
             return ext_data.size() / get_onnx_data_size(m_tensor_proto->data_type());
         }
+        if (m_tensor_proto->data_type() == TensorProto_DataType::TensorProto_DataType_UNDEFINED) {
+            OPENVINO_THROW("Cannot compute size of tensor with UNDEFINED data type");
+        }
         if (m_tensor_proto->has_raw_data()) {
             return m_tensor_proto->raw_data().size() / get_onnx_data_size(m_tensor_proto->data_type());
         }
